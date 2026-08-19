@@ -8,6 +8,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>POS</title>
 
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.5/qz-tray.js"></script>
 
@@ -19,7 +23,7 @@
       min-height:100vh;
       background:#f4f6f8;
       color:#1f252c;
-      font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai","Tahoma",sans-serif;
+      font-family:"Noto Sans Thai","Tahoma",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
       -webkit-font-smoothing:antialiased;
       overscroll-behavior-y:none;
     }
@@ -1042,6 +1046,151 @@
   .dashCard{padding:17px}
 }
 
+
+/* =====================================================
+   v8.0 PERSISTENT SPLIT POS + THAI FONT + FLATICON
+   ===================================================== */
+.fiIcon,
+.loginInputIcon img,
+.dotsBtn img,
+.searchIcon img,
+.statusIcon,
+.dashLogoutBtn img,
+.dashQuickMenu img,
+.payIcon,
+.nonCashIcon,
+.placeholder img{
+  display:block;
+  object-fit:contain;
+}
+.loginInputIcon img{width:17px;height:17px;opacity:.72}
+.dotsBtn{display:grid;place-items:center;padding:0}
+.dotsBtn img{width:20px;height:20px;filter:brightness(0) invert(1)}
+.searchIcon img{width:18px;height:18px;opacity:.65}
+.statusBtn{display:inline-flex;align-items:center;gap:6px}
+.statusIcon{width:15px;height:15px}
+.dashLogoutBtn{display:grid;place-items:center}
+.dashLogoutBtn img{width:18px;height:18px;filter:brightness(0) invert(1)}
+.dashQuickMenu span{display:grid;place-items:center}
+.dashQuickMenu span img{width:24px;height:24px}
+.payIcon{width:22px;height:22px;margin:0 auto 3px}
+.nonCashIcon{width:42px;height:42px;margin:0 auto}
+.placeholder img{width:32px;height:32px;opacity:.34}
+
+/* Cart is permanently visible on the LEFT. Products stay on the RIGHT. */
+.workspace{
+  display:grid;
+  grid-template-columns:minmax(160px,44vw) minmax(0,1fr);
+  grid-template-areas:"cart sale";
+  align-items:start;
+  gap:8px;
+  width:100%;
+  max-width:1440px;
+  padding:10px;
+}
+.salePane{grid-area:sale;min-width:0}
+.cartPane{
+  grid-area:cart;
+  position:sticky;
+  top:118px;
+  left:auto;right:auto;bottom:auto;
+  z-index:35;
+  width:100%;
+  max-height:none;
+  height:calc(100dvh - 130px);
+  transform:none!important;
+  padding:0;
+}
+.cartPane.open{transform:none!important}
+.cartCard{
+  height:100%;
+  max-height:none;
+  border-radius:16px;
+  border:1px solid var(--line);
+  box-shadow:var(--shadow);
+}
+.cartList{max-height:none;min-height:70px}
+.mobileCartSummary,.cartScrim,.sheetHandle,.sheetClose{display:none!important}
+
+/* No bottom mobile bill bar; the left cart is the bill view. */
+body{padding-bottom:0}
+body.cart-open{overflow:auto}
+
+@media(max-width:899px){
+  .workspace{
+    grid-template-columns:minmax(155px,45vw) minmax(0,1fr);
+    grid-template-areas:"cart sale";
+    gap:7px;
+    padding:8px;
+  }
+  .cartPane{
+    top:118px;
+    height:calc(100dvh - 126px);
+  }
+  .shopToolbar{top:118px}
+  .products{grid-template-columns:1fr;gap:9px}
+  .productInfo{padding:9px}
+  .productName{min-height:38px;font-size:13px}
+  .productPrice{font-size:17px}
+  .productCat{font-size:9px}
+  .stock{font-size:9px}
+  .addProductBtn{min-height:38px;font-size:11px}
+  .cartHead{padding:8px;flex-wrap:wrap}
+  .cartTitle{flex:1 1 100%}
+  .cartTitle h2{font-size:15px}
+  .cartTitle small{font-size:9px}
+  .cartTools{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .toolBtn{padding:7px 4px;font-size:9px}
+  .cartList{padding:3px 8px}
+  .cartRow{
+    grid-template-columns:1fr;
+    gap:5px;
+    padding:9px 0;
+  }
+  .cartName{font-size:11px}
+  .cartSub{font-size:8px}
+  .qty{width:100%;justify-content:space-between}
+  .qty button{width:30px;height:30px;font-size:17px}
+  .lineTotal{font-size:11px;padding-right:18px}
+  .checkout{padding:8px}
+  .sumLine{font-size:10px}
+  .discountBox{padding:7px;margin:6px 0}
+  .discountTop{display:block}
+  .discountModes{margin-top:5px}
+  .discountModes button{flex:1;padding:5px 3px;font-size:9px}
+  .discountInput{grid-template-columns:minmax(0,1fr)}
+  .fullBtn{min-height:30px}
+  .quickDiscount{grid-template-columns:repeat(2,1fr)}
+  .quickDiscount button{padding:6px 3px;font-size:9px}
+  .netLine{display:block;margin:7px 0}
+  .netLine b{display:block;margin-top:2px;font-size:21px}
+  .note{min-height:42px;font-size:10px}
+  .payBtn{min-height:46px;font-size:13px}
+  .subActions{grid-template-columns:1fr}
+  .subActions button{padding:8px 4px;font-size:9px}
+}
+
+@media(min-width:700px) and (max-width:899px){
+  .workspace{grid-template-columns:300px minmax(0,1fr);gap:10px}
+  .products{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cartRow{grid-template-columns:minmax(0,1fr);gap:6px}
+}
+
+@media(min-width:900px){
+  .workspace{
+    grid-template-columns:390px minmax(0,1fr);
+    grid-template-areas:"cart sale";
+    gap:14px;
+    padding:14px;
+  }
+  .cartPane{
+    top:78px;
+    height:calc(100vh - 92px);
+  }
+  .cartCard{height:100%}
+  .cartList{max-height:none}
+}
+
 </style>
 </head>
 
@@ -1058,7 +1207,7 @@
       <form class="loginForm" onsubmit="event.preventDefault();submitLogin()">
         <label class="loginLabel" for="loginUsername">Username</label>
         <div class="loginInputWrap">
-          <span class="loginInputIcon">👤</span>
+          <span class="loginInputIcon"><img src="https://cdn-icons-png.flaticon.com/512/1077/1077114.png" alt=""></span>
           <input id="loginUsername" class="loginInput" type="text"
             autocomplete="username" autocapitalize="none" spellcheck="false"
             placeholder="username">
@@ -1066,7 +1215,7 @@
 
         <label class="loginLabel" for="loginPassword">Password</label>
         <div class="loginInputWrap">
-          <span class="loginInputIcon">🔒</span>
+          <span class="loginInputIcon"><img src="https://cdn-icons-png.flaticon.com/512/2889/2889676.png" alt=""></span>
           <input id="loginPassword" class="loginInput" type="password"
             autocomplete="current-password" placeholder="password">
           <button class="passwordEye" type="button" onclick="toggleLoginPassword()">แสดง</button>
@@ -1099,7 +1248,7 @@
       </div>
 
       <div class="menuWrap">
-        <button class="dotsBtn" type="button" onclick="toggleMenu(event)">⋮</button>
+        <button class="dotsBtn" type="button" onclick="toggleMenu(event)" aria-label="เมนู"><img src="https://cdn-icons-png.flaticon.com/512/1828/1828859.png" alt=""></button>
         <div id="moreMenu" class="dropdown">
           <button class="dropItem" onclick="openHeldBills();closeMenu()">พักบิลที่บันทึกไว้</button>
           <button class="dropItem" onclick="reprintLast();closeMenu()">พิมพ์บิลล่าสุด</button>
@@ -1116,8 +1265,8 @@
 
     <div class="statusRail">
       <button id="shiftBtn" class="statusBtn shift" type="button" onclick="openShiftDialog()">ยังไม่เปิดกะ</button>
-      <button id="printerBtn" class="statusBtn printer" type="button" onclick="connectPrinter()">🖨 เครื่องพิมพ์</button>
-      <button id="drawerBtn" class="statusBtn drawer" type="button" onclick="openDrawerManual()" disabled>▣ ลิ้นชัก</button>
+      <button id="printerBtn" class="statusBtn printer" type="button" onclick="connectPrinter()"><img class="statusIcon" src="https://cdn-icons-png.flaticon.com/512/3022/3022251.png" alt="">เครื่องพิมพ์</button>
+      <button id="drawerBtn" class="statusBtn drawer" type="button" onclick="openDrawerManual()" disabled><img class="statusIcon" src="https://cdn-icons-png.flaticon.com/512/1261/1261163.png" alt="">ลิ้นชัก</button>
       <button class="statusBtn held" type="button" onclick="openHeldBills()">พักบิล <span id="heldCount" class="statusCount">0</span></button>
     </div>
   </header>
@@ -1132,7 +1281,7 @@
 
       <div class="shopToolbar">
         <div class="searchBox">
-          <span class="searchIcon">⌕</span>
+          <span class="searchIcon"><img src="https://cdn-icons-png.flaticon.com/512/622/622669.png" alt=""></span>
           <input id="search" type="search" autocomplete="off" placeholder="ค้นหาสินค้า..." oninput="renderProducts()">
         </div>
         <select id="cat" onchange="renderProducts()">
@@ -1202,20 +1351,6 @@
     </aside>
   </main>
 
-  <div id="cartScrim" class="cartScrim" onclick="closeCartSheet()"></div>
-
-  <div id="mobileCartSummary" class="mobileCartSummary emptyCart">
-    <div class="dockCartIcon" onclick="openCartSheet()">🧾</div>
-    <div class="dockTotal" onclick="openCartSheet()">
-      <small id="mobileCartItems">0 รายการ</small>
-      <b id="mobileCartTotal">฿0.00</b>
-    </div>
-    <button class="dockViewBtn" type="button" onclick="openCartSheet()">ดูบิล</button>
-    <button class="dockPayBtn" type="button" onclick="openPayment()">ชำระ</button>
-    <span id="heldCountMobile" class="hidden">0</span>
-  </div>
-
-
   <!-- ADMIN: DASHBOARD -->
   <section id="dashboardAdmin" class="adminPanel adminOnly hidden dashboardPage">
     <div class="adminTop dashboardTop">
@@ -1224,7 +1359,7 @@
         <h2>สรุปยอดขาย</h2>
       </div>
       <button class="primarySmall sellNowBtn" type="button" onclick="goToSalePage()">ขายสินค้า</button>
-      <button class="backBtn dashLogoutBtn" type="button" onclick="logout()">⎋</button>
+      <button class="backBtn dashLogoutBtn" type="button" onclick="logout()" aria-label="ออกจากระบบ"><img src="https://cdn-icons-png.flaticon.com/512/1828/1828427.png" alt=""></button>
     </div>
 
     <div class="dashboardBody">
@@ -1307,10 +1442,10 @@
       </div>
 
       <div class="dashQuickMenu">
-        <button type="button" onclick="goToSalePage()"><span>🛒</span><b>ขายสินค้า</b></button>
-        <button type="button" onclick="openProductAdmin()"><span>📦</span><b>สินค้า</b></button>
-        <button type="button" onclick="openStaffAdmin()"><span>👥</span><b>พนักงาน</b></button>
-        <button type="button" onclick="openShiftDialog()"><span>🧾</span><b>เปิด/ปิดกะ</b></button>
+        <button type="button" onclick="goToSalePage()"><span><img src="https://cdn-icons-png.flaticon.com/512/833/833314.png" alt=""></span><b>ขายสินค้า</b></button>
+        <button type="button" onclick="openProductAdmin()"><span><img src="https://cdn-icons-png.flaticon.com/512/679/679720.png" alt=""></span><b>สินค้า</b></button>
+        <button type="button" onclick="openStaffAdmin()"><span><img src="https://cdn-icons-png.flaticon.com/512/681/681494.png" alt=""></span><b>พนักงาน</b></button>
+        <button type="button" onclick="openShiftDialog()"><span><img src="https://cdn-icons-png.flaticon.com/512/1052/1052854.png" alt=""></span><b>เปิด/ปิดกะ</b></button>
       </div>
     </div>
   </section>
@@ -1654,14 +1789,71 @@ async function swalInput(title,label,value=''){
 }
 
 function boot(){
-  SESSION=null;
-  ROLE_DATA={};
-  sessionStorage.removeItem('posSession');
-  showLoginGate();
+  restoreSession();
 }
 
 function restoreSession(){
   showLoginGate();
+
+  let saved=null;
+  try{
+    saved=JSON.parse(localStorage.getItem('posSession')||'null');
+  }catch(e){
+    localStorage.removeItem('posSession');
+  }
+
+  if(!saved?.token){
+    showLoginGate();
+    return;
+  }
+
+  SESSION=saved;
+  ROLE_DATA={};
+
+  const card=document.getElementById('loginCard');
+  const err=document.getElementById('loginError');
+  if(card)card.classList.add('pinLoading');
+  if(err)err.textContent='กำลังเข้าสู่ระบบอัตโนมัติ...';
+
+  google.script.run
+    .withSuccessHandler(d=>{
+      ROLE_DATA=d||{};
+      if(d?.user)SESSION.user=d.user;
+      localStorage.setItem('posSession',JSON.stringify(SESSION));
+      applyUser();
+
+      google.script.run
+        .withSuccessHandler(data=>{
+          DATA=data||{products:[]};
+          setupProducts();
+          hideLoginGate();
+          if(card)card.classList.remove('pinLoading');
+          if(d?.isAdmin){
+            renderDashboard();
+            renderProductAdmin();
+            renderSalesAdmin();
+            renderStaffAdmin();
+            openDashboardAdmin();
+          }
+          loadShiftStatus();
+        })
+        .withFailureHandler(e=>{
+          SESSION=null;ROLE_DATA={};
+          localStorage.removeItem('posSession');
+          if(card)card.classList.remove('pinLoading');
+          showLoginGate();
+          if(err)err.textContent=(e&&e.message)||'โหลดข้อมูลร้านไม่สำเร็จ กรุณาเข้าสู่ระบบใหม่';
+        })
+        .getBootstrapData();
+    })
+    .withFailureHandler(()=>{
+      SESSION=null;ROLE_DATA={};
+      localStorage.removeItem('posSession');
+      if(card)card.classList.remove('pinLoading');
+      showLoginGate();
+      if(err)err.textContent='เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่';
+    })
+    .getRoleData(SESSION.token);
 }
 
 function showLoginGate(){
@@ -1726,7 +1918,7 @@ function submitLogin(){
   google.script.run
     .withSuccessHandler(resp=>{
       SESSION=resp;
-      sessionStorage.setItem('posSession',JSON.stringify(resp));
+      localStorage.setItem('posSession',JSON.stringify(resp));
 
       google.script.run
         .withSuccessHandler(d=>{
@@ -1766,7 +1958,7 @@ function login(){
 function logout(){
   const token=SESSION?.token||'';
   SESSION=null;ROLE_DATA={};SHIFT=null;CART=[];
-  sessionStorage.removeItem('posSession');
+  localStorage.removeItem('posSession');
   if($('staffName'))$('staffName').textContent='ยังไม่เข้าสู่ระบบ';
   if($('staffRole'))$('staffRole').textContent='-';
   if($('avatar'))$('avatar').textContent='?';
@@ -1792,7 +1984,7 @@ function loadRoleData(){
       if(!finish())return;
       ROLE_DATA=d;
       SESSION.user=d.user;
-      sessionStorage.setItem('posSession',JSON.stringify(SESSION));
+      localStorage.setItem('posSession',JSON.stringify(SESSION));
       applyUser();
       if(d.isAdmin){renderDashboard();renderProductAdmin();renderSalesAdmin();renderStaffAdmin();openDashboardAdmin()}
       loadShiftStatus();
@@ -1800,7 +1992,7 @@ function loadRoleData(){
     .withFailureHandler(e=>{
       if(!finish())return;
       SESSION=null;
-      sessionStorage.removeItem('posSession');
+      localStorage.removeItem('posSession');
       Swal.fire({icon:'error',title:'โหลดข้อมูลผู้ใช้ไม่สำเร็จ',text:(e&&e.message)||'กรุณาเข้าสู่ระบบใหม่',customClass:{popup:'pos-swal'}}).then(()=>login());
     })
     .getRoleData(SESSION.token);
@@ -1829,8 +2021,8 @@ function renderProducts(){
   $('products').innerHTML=list.length?list.map(p=>{
     const low=Number(p.low)>0&&Number(p.stock)<=Number(p.low);
     const img=p.image
-      ? `<img src="${esc(p.image)}" onerror="this.parentNode.innerHTML='<div class=&quot;placeholder&quot;>▣</div>'">`
-      : '<div class="placeholder">▣</div>';
+      ? `<img src="${esc(p.image)}" onerror="this.parentNode.innerHTML='<div class=&quot;placeholder&quot;><img src=&quot;https://cdn-icons-png.flaticon.com/512/2659/2659360.png&quot; alt=&quot;&quot;></div>'">`
+      : '<div class="placeholder"><img src="https://cdn-icons-png.flaticon.com/512/2659/2659360.png" alt=""></div>';
     const inCart=CART.find(x=>String(x.productId)===String(p.id));
     const qty=inCart?Number(inCart.qty||0):0;
 
@@ -2005,7 +2197,7 @@ function renderCart(){
           <button type="button" class="remove" onclick="change('${esc(x.productId)}',-${Number(x.qty||0)})">×</button>
         </div>
       </div>`).join('')
-    : '<div class="empty">ยังไม่มีสินค้า<br><small>เลือกสินค้าด้านซ้ายเพื่อเริ่มขาย</small></div>';
+    : '<div class="empty">ยังไม่มีสินค้า<br><small>เลือกสินค้าด้านขวาเพื่อเริ่มขาย</small></div>';
 
   const t=getTotals();
 
@@ -2087,10 +2279,10 @@ async function openPayment(){
 }
 function paymentSwalHtml(net){
   return `<div class="pos-pay-tabs">
-    <button class="pos-pay-tab cash active" data-paytab="เงินสด" onclick="selectPayTab('เงินสด')">💵<br>เงินสด</button>
-    <button class="pos-pay-tab qr" data-paytab="QR" onclick="selectPayTab('QR')">▣<br>QR</button>
-    <button class="pos-pay-tab transfer" data-paytab="โอน" onclick="selectPayTab('โอน')">🏦<br>โอน</button>
-    <button class="pos-pay-tab card" data-paytab="บัตร" onclick="selectPayTab('บัตร')">💳<br>บัตร</button>
+    <button class="pos-pay-tab cash active" data-paytab="เงินสด" onclick="selectPayTab('เงินสด')"><img class="payIcon" src="https://cdn-icons-png.flaticon.com/512/2331/2331941.png" alt=""><br>เงินสด</button>
+    <button class="pos-pay-tab qr" data-paytab="QR" onclick="selectPayTab('QR')"><img class="payIcon" src="https://cdn-icons-png.flaticon.com/512/714/714390.png" alt=""><br>QR</button>
+    <button class="pos-pay-tab transfer" data-paytab="โอน" onclick="selectPayTab('โอน')"><img class="payIcon" src="https://cdn-icons-png.flaticon.com/512/2830/2830284.png" alt=""><br>โอน</button>
+    <button class="pos-pay-tab card" data-paytab="บัตร" onclick="selectPayTab('บัตร')"><img class="payIcon" src="https://cdn-icons-png.flaticon.com/512/633/633611.png" alt=""><br>บัตร</button>
   </div>
   <div id="swCashPanel">
     <div class="pos-pay-display">
@@ -2114,7 +2306,7 @@ function paymentSwalHtml(net){
   </div>
   <div id="swNonCashPanel" class="hidden">
     <div class="pos-summary-box" style="text-align:center;padding:24px">
-      <div style="font-size:34px" id="swNonCashIcon">▣</div>
+      <div id="swNonCashIcon"><img class="nonCashIcon" src="https://cdn-icons-png.flaticon.com/512/714/714390.png" alt=""></div>
       <h3 id="swNonCashTitle" style="margin:10px 0 4px">ชำระด้วย QR</h3>
       <div style="color:#727986;font-size:13px">ตรวจสอบยอดก่อนกดยืนยัน</div>
       <div style="font-size:30px;font-weight:950;margin-top:14px" id="swNonCashNet">${money(net)}</div>
@@ -2128,9 +2320,13 @@ function selectPayTab(type){
   document.getElementById('swCashPanel')?.classList.toggle('hidden',!cash);
   document.getElementById('swNonCashPanel')?.classList.toggle('hidden',cash);
   if(!cash){
-    const map={'QR':['▣','ชำระด้วย QR'],'โอน':['🏦','ชำระด้วยการโอน'],'บัตร':['💳','ชำระด้วยบัตร']};
+    const map={
+      'QR':['https://cdn-icons-png.flaticon.com/512/714/714390.png','ชำระด้วย QR'],
+      'โอน':['https://cdn-icons-png.flaticon.com/512/2830/2830284.png','ชำระด้วยการโอน'],
+      'บัตร':['https://cdn-icons-png.flaticon.com/512/633/633611.png','ชำระด้วยบัตร']
+    };
     const m=map[type]||map['QR'];
-    if(document.getElementById('swNonCashIcon'))document.getElementById('swNonCashIcon').textContent=m[0];
+    if(document.getElementById('swNonCashIcon'))document.getElementById('swNonCashIcon').innerHTML=`<img class="nonCashIcon" src="${m[0]}" alt="">`;
     if(document.getElementById('swNonCashTitle'))document.getElementById('swNonCashTitle').textContent=m[1];
   }
   updatePaymentModal();
@@ -2304,13 +2500,13 @@ async function connectPrinter(){
     if(!printers.includes(name)) throw new Error('ไม่พบเครื่องพิมพ์ชื่อนี้');
     PRINTER={connected:true,name};
     localStorage.setItem('posPrinterName',name);
-    $('printerBtn').textContent='🖨 '+name;
+    $('printerBtn').innerHTML='<img class="statusIcon" src="https://cdn-icons-png.flaticon.com/512/3022/3022251.png" alt="">'+esc(name);
     $('printerBtn').classList.add('connected');
     updateShiftUI();
     toastType('เชื่อมเครื่องพิมพ์แล้ว','success');
   }catch(e){
     PRINTER={connected:false,name:''};
-    $('printerBtn').textContent='🖨 เชื่อมเครื่องพิมพ์';
+    $('printerBtn').innerHTML='<img class="statusIcon" src="https://cdn-icons-png.flaticon.com/512/3022/3022251.png" alt="">เชื่อมเครื่องพิมพ์';
     $('printerBtn').classList.remove('connected');
     updateShiftUI();
     toastType(e.message||'เชื่อมเครื่องพิมพ์ไม่ได้','error');
