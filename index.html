@@ -684,51 +684,45 @@
     }
 
     @media print{
+      /* iOS/Safari: remove every POS element from print layout completely */
       html,body{
-        width:80mm!important;
-        min-width:80mm!important;
-        height:auto!important;
-        min-height:0!important;
         margin:0!important;
         padding:0!important;
+        width:auto!important;
+        height:auto!important;
+        min-height:0!important;
         overflow:visible!important;
         background:#fff!important;
       }
-
       body > *:not(#receipt){
         display:none!important;
       }
-
       #receipt{
         display:block!important;
         position:static!important;
+        inset:auto!important;
         width:72mm!important;
         max-width:72mm!important;
         height:auto!important;
         min-height:0!important;
-        margin:0 auto!important;
+        margin:0!important;
         padding:2mm!important;
+        overflow:visible!important;
         color:#000!important;
         background:#fff!important;
         font-family:monospace!important;
         font-size:11px!important;
         line-height:1.35!important;
-        overflow:visible!important;
-        break-after:avoid-page!important;
-        page-break-after:avoid!important;
       }
-
       #receipt *{
         visibility:visible!important;
-        box-shadow:none!important;
+        max-height:none!important;
       }
-
       .receiptLine{
         break-inside:avoid!important;
         page-break-inside:avoid!important;
       }
-
-      @page{size:80mm auto;margin:0}
+      @page{margin:0}
     }
   
 /* ===== FULL SCREEN PIN LOGIN ===== */
@@ -2694,7 +2688,7 @@ function checkout(){
     if(paidType==='เงินสด')autoDrawerAfterCashSale();
     CART=[];$('discountValue').value=0;$('note').value='';DISCOUNT_MODE='BAHT';PAYMENT='เงินสด';PAY_INPUT='';
     renderCart();updateAllProductCardStates();closeCartSheet();toastType('✓ ชำระสำเร็จ · '+r.billNo,'success');
-    if(isAdmin)setTimeout(()=>window.print(),120);
+    if(isAdmin)setTimeout(()=>printReceiptOnly(),120);
     refreshAfterSale();
   }).withFailureHandler(e=>{
     BUSY=false;showLoading(false);renderCart();updatePaymentModal();toast(e.message||'ชำระเงินไม่สำเร็จ')
@@ -2703,7 +2697,77 @@ function checkout(){
 function refreshAfterSale(){google.script.run.withSuccessHandler(d=>{DATA=d;setupProducts();if(SESSION?.user?.role==='ADMIN')refreshAdmin()}).getBootstrapData()}
 function refreshAdmin(){if(!SESSION||SESSION.user.role!=='ADMIN')return;google.script.run.withSuccessHandler(d=>{ROLE_DATA={...ROLE_DATA,...d};renderDashboard();renderProductAdmin();renderSalesAdmin();renderStaffAdmin()}).refreshAdminData(SESSION.token)}
 function buildReceipt(r){if(!r)return;$('receipt').innerHTML=`<div class="receiptTitle">ใบเสร็จรับเงิน</div><div style="text-align:center">POS<br>${esc(r.datetime)}</div><hr class="receiptHr"><div>บิล: ${esc(r.billNo)}</div><div>พนักงาน: ${esc(r.staff)}</div><hr class="receiptHr">${r.items.map(i=>`<div class="receiptLine"><span>${esc(i.name)} x${i.qty}</span><span>${money(i.total)}</span></div>`).join('')}<hr class="receiptHr"><div class="receiptLine"><span>รวม</span><span>${money(r.subtotal)}</span></div><div class="receiptLine"><span>ส่วนลด</span><span>-${money(r.discount)}</span></div><div class="receiptLine" style="font-size:15px;font-weight:900"><span>สุทธิ</span><span>${money(r.net)}</span></div><div>ชำระ: ${esc(r.payment)}</div><div>รับเงิน: ${money(r.paid)}</div><div>เงินทอน: ${money(r.change)}</div><hr class="receiptHr"><div style="text-align:center">ขอบคุณค่ะ/ครับ</div>`}
-function reprintLast(){if(!LAST_RECEIPT){toast('ยังไม่มีบิลล่าสุด');return}buildReceipt(LAST_RECEIPT);window.print()}
+function printReceiptOnly(){
+  const receipt=document.getElementById('receipt');
+  if(!receipt || !receipt.innerHTML.trim()){
+    toastType('ไม่พบข้อมูลใบเสร็จ','warn');
+    return;
+  }
+
+  // พิมพ์จาก iframe ที่มีเฉพาะใบเสร็จ เพื่อไม่ให้ iPhone นับหน้า POS ทั้งหมด
+  const oldFrame=document.getElementById('receiptPrintFrame');
+  if(oldFrame) oldFrame.remove();
+
+  const frame=document.createElement('iframe');
+  frame.id='receiptPrintFrame';
+  frame.setAttribute('aria-hidden','true');
+  frame.style.position='fixed';
+  frame.style.right='0';
+  frame.style.bottom='0';
+  frame.style.width='1px';
+  frame.style.height='1px';
+  frame.style.border='0';
+  frame.style.opacity='0';
+  frame.style.pointerEvents='none';
+  document.body.appendChild(frame);
+
+  const doc=frame.contentDocument || frame.contentWindow.document;
+  doc.open();
+  doc.write(`<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ใบเสร็จ</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#fff;color:#000;width:auto;height:auto;min-height:0}
+  body{font-family:monospace;font-size:11px;line-height:1.35}
+  #printReceipt{width:72mm;max-width:72mm;margin:0;padding:2mm;background:#fff}
+  .receiptTitle{text-align:center;font-size:17px;font-weight:900}
+  .receiptLine{display:flex;justify-content:space-between;gap:8px;break-inside:avoid;page-break-inside:avoid}
+  .receiptHr{border:0;border-top:1px dashed #000;margin:7px 0}
+  @media print{
+    html,body{margin:0!important;padding:0!important;height:auto!important;min-height:0!important;overflow:visible!important}
+    #printReceipt{display:block!important;position:static!important;width:72mm!important;max-width:72mm!important;height:auto!important;min-height:0!important;margin:0!important;padding:2mm!important;overflow:visible!important}
+    @page{margin:0}
+  }
+</style>
+</head>
+<body><div id="printReceipt">${receipt.innerHTML}</div></body>
+</html>`);
+  doc.close();
+
+  const doPrint=()=>{
+    try{
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    }catch(e){
+      console.error(e);
+      toastType('เปิดหน้าพิมพ์ไม่สำเร็จ','error');
+    }
+    setTimeout(()=>{ try{frame.remove()}catch(_){} },3000);
+  };
+
+  if(doc.readyState==='complete') setTimeout(doPrint,120);
+  else frame.onload=()=>setTimeout(doPrint,120);
+}
+
+function reprintLast(){
+  if(!LAST_RECEIPT){toast('ยังไม่มีบิลล่าสุด');return}
+  buildReceipt(LAST_RECEIPT);
+  printReceiptOnly();
+}
 
 function renderDashboard(){if(!ROLE_DATA.isAdmin)return;const d=ROLE_DATA.dashboard||{};$('mSales').textContent=money(d.sales);$('mBills').textContent=d.bills||0;$('mDiscount').textContent=money(d.discount)}
 function showAdminView(){openDashboardAdmin()}
@@ -3094,7 +3158,7 @@ async function toggleStaff(id,active){
 
 
 function renderSalesAdmin(){if(!ROLE_DATA.isAdmin)return;$('salesAdminBody').innerHTML=(ROLE_DATA.recentSales||[]).map(r=>`<tr><td><b>${esc(r.billNo)}</b></td><td>${esc(r.datetime)}</td><td>${esc(r.staff)}</td><td>${money(r.subtotal)}</td><td>${money(r.discount)}</td><td><b>${money(r.net)}</b></td><td>${esc(r.payment)}</td><td><span class="pill ${r.status==='ยกเลิก'?'cancel':'ok'}">${esc(r.status)}</span></td><td><button class="miniBtn edit" onclick="printBill('${esc(r.billNo)}')">พิมพ์</button> ${r.status!=='ยกเลิก'?`<button class="miniBtn danger" onclick="askCancel('${esc(r.billNo)}')">ยกเลิก</button>`:''}</td></tr>`).join('')}
-function printBill(billNo){showLoading(true);google.script.run.withSuccessHandler(r=>{showLoading(false);LAST_RECEIPT=r;buildReceipt(r);setTimeout(()=>window.print(),100)}).withFailureHandler(e=>{showLoading(false);toast(e.message)}).getReceipt(SESSION.token,billNo)}
+function printBill(billNo){showLoading(true);google.script.run.withSuccessHandler(r=>{showLoading(false);LAST_RECEIPT=r;buildReceipt(r);setTimeout(()=>printReceiptOnly(),100)}).withFailureHandler(e=>{showLoading(false);toast(e.message)}).getReceipt(SESSION.token,billNo)}
 async function askCancel(billNo){
   CANCEL_BILL=billNo;
   const r=await Swal.fire({
