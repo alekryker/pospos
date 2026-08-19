@@ -1076,7 +1076,7 @@
       </form>
 
       <div id="loginError" class="pinError"></div>
-      <div id="apiConnectionState" style="margin-top:8px;text-align:center;font-size:10px;color:#8a929c">กำลังเชื่อมต่อระบบ...</div>
+      <div id="apiConnectionState" style="margin-top:8px;text-align:center;font-size:10px;color:#8a929c">กำลังเชื่อมต่อระบบ...</div><button type="button" onclick="window.POS_API?.retry()" style="display:block;margin:7px auto 0;border:0;background:transparent;color:#8a1a1f;font-size:10px;font-weight:800">ลองเชื่อมต่อใหม่</button>
     </div>
   </div>
 
@@ -1377,73 +1377,51 @@
 
   
   <script>
-  /* ===== GitHub Pages -> Apps Script Bridge v7.4 ===== */
+  /* ===== GitHub Pages -> Apps Script Form RPC v7.4.2 ===== */
   const POS_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzqb_FrN4HE8zs3Q27NzWhPqGooIn_J3HOR4mDKmbJYNvTQdsDbLkKtwVhind0uBodp2w/exec";
-  const POS_BRIDGE_URL = POS_APPS_SCRIPT_URL + (POS_APPS_SCRIPT_URL.includes('?') ? '&' : '?') + 'bridge=1';
 
   (() => {
     const pending = new Map();
-    const queue = [];
     let seq = 0;
-    let ready = false;
-    let bridgeOrigin = null;
+    const pageNonce = crypto && crypto.getRandomValues
+      ? Array.from(crypto.getRandomValues(new Uint32Array(4))).map(x=>x.toString(16)).join('')
+      : String(Date.now()) + Math.random().toString(16).slice(2);
 
-    const frame = document.createElement('iframe');
-    frame.id = 'posAppsScriptBridge';
-    frame.src = POS_BRIDGE_URL;
-    frame.title = 'POS Apps Script Bridge';
-    frame.setAttribute('aria-hidden','true');
-    frame.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;border:0;left:-9999px;top:-9999px;';
-    document.documentElement.appendChild(frame);
+    function setConnectionText(text, ok=false) {
+      const el = document.getElementById('apiConnectionState');
+      if (!el) return;
+      el.textContent = text;
+      el.style.color = ok ? '#0b8a57' : '#bc2b31';
+    }
 
-    function asError(value) {
+    function makeError(value) {
       if (value instanceof Error) return value;
-      const message = value && value.message ? value.message : String(value || 'Apps Script API error');
-      const err = new Error(message);
-      if (value && value.name) err.name = value.name;
-      return err;
+      const e = new Error(value && value.message ? value.message : String(value || 'Apps Script API error'));
+      if (value && value.name) e.name = value.name;
+      return e;
     }
 
-    function send(payload) {
-      if (!ready || !frame.contentWindow) {
-        queue.push(payload);
-        return;
-      }
-      frame.contentWindow.postMessage(payload, bridgeOrigin || '*');
-    }
-
-    function flush() {
-      while (ready && queue.length) {
-        const payload = queue.shift();
-        frame.contentWindow.postMessage(payload, bridgeOrigin || '*');
-      }
-    }
-
-    window.addEventListener('message', (event) => {
+    window.addEventListener('message', event => {
       const msg = event.data || {};
-      if (event.source !== frame.contentWindow) return;
-
-      if (msg.type === 'pos-bridge-ready') {
-        ready = true;
-        bridgeOrigin = event.origin || null;
-        flush();
-        window.dispatchEvent(new CustomEvent('pos-api-ready'));
-        return;
-      }
-
-      if (msg.type !== 'pos-bridge-response' || !msg.id) return;
+      if (msg.type !== 'pos-rpc-response') return;
+      if (!msg.id || msg.nonce !== pageNonce) return;
 
       const item = pending.get(msg.id);
       if (!item) return;
+
       pending.delete(msg.id);
       clearTimeout(item.timer);
 
+      try { item.iframe.remove(); } catch (_) {}
+
       if (msg.ok) {
-        try { item.success && item.success(msg.result); } catch (err) { console.error(err); }
+        try { item.success && item.success(msg.result); }
+        catch (err) { console.error(err); }
       } else {
-        const err = asError(msg.error);
+        const err = makeError(msg.error);
         if (item.failure) {
-          try { item.failure(err); } catch (handlerErr) { console.error(handlerErr); }
+          try { item.failure(err); }
+          catch (handlerErr) { console.error(handlerErr); }
         } else {
           console.error('Apps Script API:', err);
         }
@@ -1452,22 +1430,66 @@
 
     function invoke(method, args, success, failure) {
       const id = 'rpc_' + Date.now() + '_' + (++seq);
+      const frameName = 'pos_rpc_' + id.replace(/[^a-zA-Z0-9_]/g,'_');
+
+      const iframe = document.createElement('iframe');
+      iframe.name = frameName;
+      iframe.id = frameName;
+      iframe.title = 'POS RPC';
+      iframe.setAttribute('aria-hidden','true');
+      iframe.style.cssText =
+        'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;border:0;left:-9999px;top:-9999px;';
+      document.body.appendChild(iframe);
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = POS_APPS_SCRIPT_URL;
+      form.target = frameName;
+      form.style.display = 'none';
+
+      const fields = {
+        rpc: '1',
+        id,
+        nonce: pageNonce,
+        method: String(method),
+        args: JSON.stringify(Array.isArray(args) ? args : [])
+      };
+
+      Object.entries(fields).forEach(([name,value]) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+      });
+
+      document.body.appendChild(form);
+
       const timer = setTimeout(() => {
         const item = pending.get(id);
         if (!item) return;
         pending.delete(id);
-        const err = new Error('เชื่อมต่อ Apps Script API นานเกินไป');
+        try { item.iframe.remove(); } catch (_) {}
+        const err = new Error('Apps Script API ตอบกลับนานเกินไป');
         if (item.failure) item.failure(err);
         else console.error(err);
+        setConnectionText('เชื่อมต่อระบบไม่ได้ กรุณาตรวจสอบ Apps Script', false);
       }, 30000);
 
-      pending.set(id, { success, failure, timer });
-      send({
-        type: 'pos-bridge-call',
-        id,
-        method: String(method),
-        args: Array.isArray(args) ? args : []
-      });
+      pending.set(id, { success, failure, timer, iframe });
+
+      try {
+        form.submit();
+      } catch (err) {
+        pending.delete(id);
+        clearTimeout(timer);
+        iframe.remove();
+        form.remove();
+        failure && failure(err);
+        return;
+      }
+
+      form.remove();
     }
 
     function makeRunner() {
@@ -1478,10 +1500,10 @@
       proxy = new Proxy({}, {
         get(_target, prop) {
           if (prop === 'withSuccessHandler') {
-            return (fn) => { success = fn; return proxy; };
+            return fn => { success = fn; return proxy; };
           }
           if (prop === 'withFailureHandler') {
-            return (fn) => { failure = fn; return proxy; };
+            return fn => { failure = fn; return proxy; };
           }
           if (prop === 'withUserObject') {
             return () => proxy;
@@ -1494,6 +1516,7 @@
           };
         }
       });
+
       return proxy;
     }
 
@@ -1505,10 +1528,29 @@
       get: () => makeRunner()
     });
 
+    function testApi() {
+      setConnectionText('กำลังเชื่อมต่อระบบ...', false);
+      google.script.run
+        .withSuccessHandler(() => {
+          setConnectionText('● เชื่อมต่อระบบแล้ว', true);
+          window.dispatchEvent(new CustomEvent('pos-api-ready'));
+        })
+        .withFailureHandler(err => {
+          setConnectionText('เชื่อมต่อระบบไม่ได้: ' + (err?.message || ''), false);
+        })
+        .pingPOS();
+    }
+
     window.POS_API = {
       url: POS_APPS_SCRIPT_URL,
-      isReady: () => ready
+      isReady: () => {
+        const el = document.getElementById('apiConnectionState');
+        return !!el && el.textContent.includes('เชื่อมต่อระบบแล้ว');
+      },
+      retry: testApi
     };
+
+    window.addEventListener('load', () => setTimeout(testApi, 250));
   })();
   </script>
 
@@ -2757,22 +2799,7 @@ boot();
   
   </script>
 
-<script>
-window.addEventListener('pos-api-ready', () => {
-  const el = document.getElementById('apiConnectionState');
-  if (el) {
-    el.textContent = '● เชื่อมต่อระบบแล้ว';
-    el.style.color = '#0b8a57';
-  }
-});
-setTimeout(() => {
-  const el = document.getElementById('apiConnectionState');
-  if (el && !(window.POS_API && window.POS_API.isReady())) {
-    el.textContent = 'เชื่อมต่อระบบไม่ได้ กรุณาตรวจสอบ Apps Script';
-    el.style.color = '#bc2b31';
-  }
-}, 12000);
-</script>
+
 
 </body>
 </html>
