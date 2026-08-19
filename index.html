@@ -1191,6 +1191,94 @@ body.cart-open{overflow:auto}
   .cartList{max-height:none}
 }
 
+
+/* =====================================================
+   v8.1 PRODUCTS LEFT + CART RIGHT + MULTI-COLUMN CART
+   ===================================================== */
+
+/* Main split: products on LEFT, sale/cart on RIGHT */
+.workspace{
+  grid-template-columns:minmax(0,1fr) minmax(360px,46%);
+  grid-template-areas:"sale cart";
+}
+.salePane{grid-area:sale}
+.cartPane{grid-area:cart}
+
+/* Cart items are compact cards: 2 per row by default */
+.cartList{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  align-content:start;
+  gap:8px;
+  padding:8px;
+}
+.cartRow{
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  grid-template-areas:
+    "info total"
+    "qty qty";
+  align-items:center;
+  gap:7px;
+  padding:10px;
+  border:1px solid #e7ebef;
+  border-radius:12px;
+  background:#fff;
+}
+.cartRow > div:nth-child(1){grid-area:info;min-width:0}
+.cartRow > .qty{grid-area:qty;width:100%;justify-content:space-between}
+.cartRow > div:nth-child(3){grid-area:total;position:relative;padding-right:18px;text-align:right}
+.cartName{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cartSub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lineTotal{padding-right:0!important}
+.remove{right:-2px;top:-9px}
+.empty{grid-column:1/-1}
+
+/* Larger screens can show 3 sold items per row */
+@media(min-width:1280px){
+  .workspace{grid-template-columns:minmax(0,1fr) minmax(520px,48%)}
+  .cartList{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+/* Tablet / mobile: keep products left and cart right */
+@media(max-width:899px){
+  .workspace{
+    grid-template-columns:minmax(0,52%) minmax(0,48%);
+    grid-template-areas:"sale cart";
+    gap:7px;
+    padding:8px;
+  }
+  .products{grid-template-columns:1fr}
+  .cartList{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:5px;
+    padding:5px;
+  }
+  .cartRow{
+    grid-template-columns:minmax(0,1fr);
+    grid-template-areas:
+      "info"
+      "total"
+      "qty";
+    gap:4px;
+    padding:7px 6px;
+  }
+  .cartName{font-size:10px}
+  .cartSub{font-size:7px}
+  .lineTotal{font-size:10px!important;text-align:left}
+  .cartRow > div:nth-child(3){padding-right:16px;text-align:left}
+  .qty{gap:2px;padding:2px}
+  .qty button{width:26px!important;height:27px!important;font-size:15px!important}
+  .qty span{font-size:9px}
+}
+
+/* Very small phones need one cart card per row to stay usable */
+@media(max-width:520px){
+  .workspace{grid-template-columns:minmax(0,55%) minmax(0,45%)}
+  .cartList{grid-template-columns:1fr}
+}
+
 </style>
 </head>
 
