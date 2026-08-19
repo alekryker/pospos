@@ -1249,7 +1249,15 @@ body.cart-open{overflow:auto}
     gap:7px;
     padding:8px;
   }
-  .products{grid-template-columns:1fr}
+  /* Products: show 2 cards per row on mobile/tablet */
+  .products{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .productInfo{padding:7px}
+  .productName{min-height:34px;font-size:11px;line-height:1.25;margin:4px 0 6px}
+  .productPrice{font-size:15px}
+  .productCat,.stock{font-size:8px}
+  .addProductBtn{min-height:34px;font-size:10px;padding:6px 4px}
+  .productAddRow{gap:4px;margin-top:6px}
+  .cartQtyBadge{min-width:27px;height:27px;font-size:9px}
   .cartList{
     grid-template-columns:repeat(2,minmax(0,1fr));
     gap:5px;
@@ -1273,8 +1281,21 @@ body.cart-open{overflow:auto}
   .qty span{font-size:9px}
 }
 
-/* Very small phones need one cart card per row to stay usable */
+/* Product density by available screen width */
+@media(min-width:900px) and (max-width:1279px){
+  .products{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+}
+@media(min-width:1280px){
+  .products{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+}
+
+/* Very small phones: still keep 2 product cards per row */
 @media(max-width:520px){
+  .products{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+  .productInfo{padding:6px}
+  .productName{font-size:10px;min-height:31px}
+  .productPrice{font-size:13px}
+  .addProductBtn{min-height:32px;font-size:9px}
   .workspace{grid-template-columns:minmax(0,55%) minmax(0,45%)}
   .cartList{grid-template-columns:1fr}
 }
