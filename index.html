@@ -1835,6 +1835,7 @@ const $=id=>document.getElementById(id);
 const money=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 let DATA={products:[]},ROLE_DATA={},CART=[],SESSION=null,PAYMENT='เงินสด',PAY_INPUT='',DISCOUNT_MODE='BAHT',LAST_RECEIPT=null,CANCEL_BILL='',BUSY=false,SHIFT=null,PRINTER={connected:false,name:'',mode:''};
+let USB_PRINTER_DEVICE=null,USB_PRINTER_INTERFACE=null,USB_PRINTER_ENDPOINT=null;
 let LOGIN_BUSY=false,DASH_MODE='DAY',DASH_REPORT=null;
 
 let LOADING_TIMER=null;
@@ -1930,6 +1931,9 @@ function boot(){
     PRINTER={connected:true,name:'AirPrint',mode:'AIRPRINT'};
     localStorage.setItem('posPrinterMode','AIRPRINT');
     setTimeout(()=>{setPrinterButton('AirPrint พร้อมใช้',true);updateShiftUI();},0);
+  }else if(isAndroidDevice()){
+    PRINTER={connected:false,name:'',mode:'WEBUSB'};
+    setTimeout(()=>{setPrinterButton('เชื่อม USB',false);updateShiftUI();},0);
   }
   restoreSession();
 }
@@ -2546,7 +2550,7 @@ function updateShiftUI(){
   if(!b)return;
   b.textContent=open?'กะเปิดอยู่':'ยังไม่เปิดกะ';
   b.classList.toggle('open',open);b.classList.toggle('closed',!open);
-  $('drawerBtn').disabled=!(open&&PRINTER.connected&&PRINTER.mode==='QZ');
+  $('drawerBtn').disabled=!(open&&PRINTER.connected&&['QZ','WEBUSB'].includes(PRINTER.mode));
 }
 async function openShiftDialog(){
   if(!SESSION){login();return}
@@ -2618,6 +2622,169 @@ function isIOSDevice(){
   return /iPhone|iPad|iPod/i.test(ua) || touchMac;
 }
 
+
+function isAndroidDevice(){
+  return /Android/i.test(navigator.userAgent||'');
+}
+function webUsbAvailable(){
+  return !!(navigator.usb && window.isSecureContext);
+}
+async function prepareUsbPrinterDevice(device){
+  if(!device) throw new Error('ไม่พบเครื่องพิมพ์ USB');
+  if(!device.opened) await device.open();
+  if(!device.configuration){
+    const cfg=(device.configurations&&device.configurations[0])?.configurationValue || 1;
+    await device.selectConfiguration(cfg);
+  }
+  let chosen=null;
+  for(const iface of (device.configuration?.interfaces||[])){
+    for(const alt of (iface.alternates||[])){
+      const outEp=(alt.endpoints||[]).find(ep=>ep.direction==='out');
+      if(outEp){
+        chosen={interfaceNumber:iface.interfaceNumber,alternateSetting:alt.alternateSetting,endpointNumber:outEp.endpointNumber};
+        break;
+      }
+    }
+    if(chosen)break;
+  }
+  if(!chosen) throw new Error('พบ USB แต่ไม่พบช่องส่งข้อมูลของเครื่องพิมพ์');
+  try{await device.claimInterface(chosen.interfaceNumber);}
+  catch(e){if(!/already claimed/i.test(String(e?.message||''))) throw e;}
+  const iface=(device.configuration?.interfaces||[]).find(x=>x.interfaceNumber===chosen.interfaceNumber);
+  if(iface&&iface.alternate&&iface.alternate.alternateSetting!==chosen.alternateSetting){
+    await device.selectAlternateInterface(chosen.interfaceNumber,chosen.alternateSetting);
+  }
+  USB_PRINTER_DEVICE=device;
+  USB_PRINTER_INTERFACE=chosen.interfaceNumber;
+  USB_PRINTER_ENDPOINT=chosen.endpointNumber;
+  return device;
+}
+async function connectAndroidUsbPrinter(){
+  if(!webUsbAvailable()) throw new Error('กรุณาเปิดเว็บด้วย Chrome บน Android และต้องเป็น HTTPS');
+  let device=null;
+  const remembered=await navigator.usb.getDevices();
+  if(remembered?.length){
+    device=remembered.find(d=>(d.configurations||[]).some(c=>(c.interfaces||[]).some(i=>(i.alternates||[]).some(a=>a.interfaceClass===7))))||remembered[0];
+  }
+  if(!device){
+    device=await navigator.usb.requestDevice({filters:[{classCode:7}]});
+  }
+  await prepareUsbPrinterDevice(device);
+  const name=device.productName||device.manufacturerName||'USB Printer';
+  PRINTER={connected:true,name,mode:'WEBUSB'};
+  localStorage.setItem('posPrinterMode','WEBUSB');
+  setPrinterButton('USB · '+name,true);
+  updateShiftUI();
+  return name;
+}
+async function usbSend(data){
+  if(!USB_PRINTER_DEVICE||USB_PRINTER_ENDPOINT==null) throw new Error('กรุณากดเชื่อม USB ก่อน');
+  if(!USB_PRINTER_DEVICE.opened) await prepareUsbPrinterDevice(USB_PRINTER_DEVICE);
+  const bytes=data instanceof Uint8Array?data:new Uint8Array(data);
+  const r=await USB_PRINTER_DEVICE.transferOut(USB_PRINTER_ENDPOINT,bytes);
+  if(r&&r.status&&r.status!=='ok') throw new Error('ส่งข้อมูลไปเครื่องพิมพ์ไม่สำเร็จ: '+r.status);
+  return r;
+}
+function usbMoney(n){
+  return Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+' บาท';
+}
+function fitCanvasText(ctx,text,maxWidth){
+  text=String(text??'');
+  if(ctx.measureText(text).width<=maxWidth)return text;
+  let out=text;
+  while(out.length>1&&ctx.measureText(out+'…').width>maxWidth)out=out.slice(0,-1);
+  return out+'…';
+}
+async function buildUsbReceiptCanvas(r){
+  if(document.fonts?.ready){try{await document.fonts.ready;}catch(_){}}
+  const W=576,margin=22,itemH=44,baseH=480,H=Math.max(620,baseH+(r?.items?.length||0)*itemH);
+  const canvas=document.createElement('canvas');
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d',{alpha:false});
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);ctx.fillStyle='#000';ctx.textBaseline='top';
+  let y=18;
+  const center=(text,font)=>{ctx.font=font;ctx.textAlign='center';ctx.fillText(String(text),W/2,y);y+=parseInt(font,10)+10;};
+  const left=(text,font='22px "Noto Sans Thai", sans-serif')=>{ctx.font=font;ctx.textAlign='left';ctx.fillText(String(text),margin,y);y+=31;};
+  const lr=(l,rText,font='22px "Noto Sans Thai", sans-serif')=>{ctx.font=font;ctx.textAlign='left';ctx.fillText(fitCanvasText(ctx,l,W*0.62-margin),margin,y);ctx.textAlign='right';ctx.fillText(String(rText),W-margin,y);y+=32;};
+  const rule=()=>{ctx.fillRect(margin,y,W-margin*2,2);y+=15;};
+  center('ใบเสร็จรับเงิน','bold 31px "Noto Sans Thai", sans-serif');
+  center('POS','bold 24px "Noto Sans Thai", sans-serif');
+  center(r.datetime||'','20px "Noto Sans Thai", sans-serif');
+  y+=5;rule();
+  left('บิล: '+(r.billNo||''));
+  left('พนักงาน: '+(r.staff||''));
+  rule();
+  (r.items||[]).forEach(i=>lr(`${i.name} x${i.qty}`,usbMoney(i.total)));
+  rule();
+  lr('รวม',usbMoney(r.subtotal));
+  lr('ส่วนลด','-'+usbMoney(r.discount));
+  lr('สุทธิ',usbMoney(r.net),'bold 28px "Noto Sans Thai", sans-serif');
+  y+=4;
+  left('ชำระ: '+(r.payment||''));
+  left('รับเงิน: '+usbMoney(r.paid));
+  left('เงินทอน: '+usbMoney(r.change));
+  if(r.note)left('หมายเหตุ: '+r.note);
+  y+=4;rule();
+  center('ขอบคุณค่ะ/ครับ','22px "Noto Sans Thai", sans-serif');
+  y+=35;
+  const cropped=document.createElement('canvas');
+  cropped.width=W;cropped.height=Math.min(H,Math.ceil(y));
+  const c2=cropped.getContext('2d',{alpha:false});
+  c2.fillStyle='#fff';c2.fillRect(0,0,cropped.width,cropped.height);c2.drawImage(canvas,0,0);
+  return cropped;
+}
+function canvasRasterChunk(canvas,startY,rows){
+  const ctx=canvas.getContext('2d');
+  const img=ctx.getImageData(0,startY,canvas.width,rows);
+  const widthBytes=Math.ceil(canvas.width/8);
+  const data=new Uint8Array(widthBytes*rows);
+  let di=0;
+  for(let y=0;y<rows;y++){
+    for(let xb=0;xb<widthBytes;xb++){
+      let b=0;
+      for(let bit=0;bit<8;bit++){
+        const x=xb*8+bit;if(x>=canvas.width)continue;
+        const p=(y*canvas.width+x)*4;
+        const lum=.299*img.data[p]+.587*img.data[p+1]+.114*img.data[p+2];
+        if(lum<165)b|=(0x80>>bit);
+      }
+      data[di++]=b;
+    }
+  }
+  const xL=widthBytes&255,xH=(widthBytes>>8)&255,yL=rows&255,yH=(rows>>8)&255;
+  const cmd=new Uint8Array(8+data.length);
+  cmd.set([0x1D,0x76,0x30,0x00,xL,xH,yL,yH],0);
+  cmd.set(data,8);
+  return cmd;
+}
+async function printReceiptUsb(r){
+  if(!r)throw new Error('ไม่พบข้อมูลใบเสร็จ');
+  const canvas=await buildUsbReceiptCanvas(r);
+  await usbSend(new Uint8Array([0x1B,0x40]));
+  for(let y=0;y<canvas.height;y+=180){
+    const rows=Math.min(180,canvas.height-y);
+    await usbSend(canvasRasterChunk(canvas,y,rows));
+  }
+  await usbSend(new Uint8Array([0x0A,0x0A,0x0A,0x1D,0x56,0x00]));
+}
+async function printReceiptSmart(){
+  if(!LAST_RECEIPT){toastType('ไม่พบข้อมูลใบเสร็จ','warn');return;}
+  try{
+    if(PRINTER.mode==='WEBUSB'){
+      await printReceiptUsb(LAST_RECEIPT);
+      toastType('พิมพ์ใบเสร็จแล้ว','success');
+      return;
+    }
+    printReceiptOnly();
+  }catch(e){
+    console.error(e);
+    PRINTER.connected=false;
+    setPrinterButton(isAndroidDevice()?'เชื่อม USB':'เชื่อมเครื่องพิมพ์',false);
+    updateShiftUI();
+    Swal.fire({icon:'error',title:'พิมพ์ไม่สำเร็จ',text:(e&&e.message)||'ตรวจสอบสาย USB และกดเชื่อมใหม่',confirmButtonText:'ตกลง',customClass:{popup:'pos-swal'}});
+  }
+}
+
 function setPrinterButton(label,connected){
   const btn=$('printerBtn');
   if(!btn)return;
@@ -2629,17 +2796,34 @@ async function connectPrinter(){
   if(isIOSDevice()){
     PRINTER={connected:true,name:'AirPrint',mode:'AIRPRINT'};
     localStorage.setItem('posPrinterMode','AIRPRINT');
-    localStorage.removeItem('posPrinterName');
     setPrinterButton('AirPrint พร้อมใช้',true);
     updateShiftUI();
+    await Swal.fire({icon:'success',title:'พร้อมพิมพ์บน iPhone',html:'ใช้ <b>AirPrint</b> สำหรับ iPhone/iPad',confirmButtonText:'ตกลง',customClass:{popup:'pos-swal'}});
+    return;
+  }
 
-    await Swal.fire({
-      icon:'success',
-      title:'พร้อมพิมพ์บน iPhone',
-      html:'ใช้ <b>AirPrint</b><br><span style="font-size:12px;color:#727986">เมื่อกดพิมพ์ ให้เลือกเครื่องพิมพ์จากเมนู “เครื่องพิมพ์” ของ iPhone</span>',
-      confirmButtonText:'ตกลง',
-      customClass:{popup:'pos-swal'}
-    });
+  if(isAndroidDevice()){
+    try{
+      const name=await connectAndroidUsbPrinter();
+      await Swal.fire({
+        icon:'success',
+        title:'เชื่อมเครื่องพิมพ์ USB แล้ว',
+        html:`<b>${esc(name)}</b><br><span style="font-size:12px;color:#727986">พิมพ์ตรงผ่านสาย USB/OTG ไม่ใช้ QZ Tray</span>`,
+        confirmButtonText:'ตกลง',
+        customClass:{popup:'pos-swal'}
+      });
+    }catch(e){
+      PRINTER={connected:false,name:'',mode:'WEBUSB'};
+      setPrinterButton('เชื่อม USB',false);
+      updateShiftUI();
+      Swal.fire({
+        icon:'error',
+        title:'เชื่อม USB ไม่ได้',
+        html:`<div style="text-align:left;font-size:13px;line-height:1.65">${esc((e&&e.message)||'เชื่อมต่อไม่สำเร็จ')}<br><br>• ใช้ Chrome บน Android<br>• เว็บต้องเป็น HTTPS<br>• เสียบเครื่องพิมพ์ผ่านสาย USB-C/OTG<br>• เปิดเครื่องพิมพ์ก่อนกดเชื่อม</div>`,
+        confirmButtonText:'ตกลง',
+        customClass:{popup:'pos-swal'}
+      });
+    }
     return;
   }
 
@@ -2670,7 +2854,6 @@ async function connectPrinter(){
       name=r.value;
     }
 
-    if(!printers.includes(name)) throw new Error('ไม่พบเครื่องพิมพ์ชื่อนี้');
     PRINTER={connected:true,name,mode:'QZ'};
     localStorage.setItem('posPrinterName',name);
     localStorage.setItem('posPrinterMode','QZ');
@@ -2679,23 +2862,23 @@ async function connectPrinter(){
     toastType('เชื่อมเครื่องพิมพ์แล้ว','success');
   }catch(e){
     PRINTER={connected:false,name:'',mode:''};
-    localStorage.removeItem('posPrinterMode');
     setPrinterButton('เชื่อมเครื่องพิมพ์',false);
     updateShiftUI();
-    Swal.fire({
-      icon:'error',
-      title:'เชื่อมเครื่องพิมพ์ไม่ได้',
-      text:(e&&e.message)||'กรุณาตรวจสอบ QZ Tray และเครื่องพิมพ์',
-      confirmButtonText:'ตกลง',
-      customClass:{popup:'pos-swal'}
-    });
+    Swal.fire({icon:'error',title:'เชื่อมเครื่องพิมพ์ไม่ได้',text:(e&&e.message)||'กรุณาตรวจสอบ QZ Tray และเครื่องพิมพ์',confirmButtonText:'ตกลง',customClass:{popup:'pos-swal'}});
   }
 }
 async function pulseCashDrawer(){
   if(!PRINTER.connected) throw new Error('กรุณาเชื่อมเครื่องพิมพ์ก่อน');
-  if(PRINTER.mode==='AIRPRINT') throw new Error('AirPrint บน iPhone ไม่สามารถสั่งเปิดลิ้นชักเงินสดอัตโนมัติได้');
   if(!SHIFT?.open) throw new Error('กรุณาเปิดกะก่อน');
+
+  if(PRINTER.mode==='WEBUSB'){
+    await usbSend(new Uint8Array([0x1B,0x70,0x00,0x19,0xFA]));
+    return;
+  }
+
+  if(PRINTER.mode==='AIRPRINT') throw new Error('AirPrint ไม่สามารถสั่งเปิดลิ้นชักอัตโนมัติได้');
   if(typeof qz==='undefined'||!qz.websocket.isActive()) throw new Error('QZ Tray ยังไม่ได้เชื่อมต่อ');
+
   const cfg=qz.configs.create(PRINTER.name,{encoding:'CP874'});
   const data=[{type:'raw',format:'command',data:'\x1B\x70\x00\x19\xFA'}];
   await qz.print(cfg,data);
@@ -2708,7 +2891,7 @@ async function openDrawerManual(){
   }catch(e){toast(e.message||'เปิดลิ้นชักไม่ได้')}
 }
 async function autoDrawerAfterCashSale(){
-  if(PAYMENT!=='เงินสด'||!PRINTER.connected||PRINTER.mode!=='QZ'||!SHIFT?.open)return;
+  if(PAYMENT!=='เงินสด'||!PRINTER.connected||!['QZ','WEBUSB'].includes(PRINTER.mode)||!SHIFT?.open)return;
   try{
     await pulseCashDrawer();
     google.script.run.logCashDrawerOpen(SESSION.token,'SALE');
@@ -2732,7 +2915,7 @@ function checkout(){
     if(paidType==='เงินสด')autoDrawerAfterCashSale();
     CART=[];$('discountValue').value=0;$('note').value='';DISCOUNT_MODE='BAHT';PAYMENT='เงินสด';PAY_INPUT='';
     renderCart();updateAllProductCardStates();closeCartSheet();toastType('✓ ชำระสำเร็จ · '+r.billNo,'success');
-    if(shouldPrint)setTimeout(()=>printReceiptOnly(),180);
+    if(shouldPrint)setTimeout(()=>printReceiptSmart(),180);
     refreshAfterSale();
   }).withFailureHandler(e=>{
     BUSY=false;showLoading(false);renderCart();updatePaymentModal();toast(e.message||'ชำระเงินไม่สำเร็จ')
@@ -2810,7 +2993,7 @@ function printReceiptOnly(){
 function reprintLast(){
   if(!LAST_RECEIPT){toast('ยังไม่มีบิลล่าสุด');return}
   buildReceipt(LAST_RECEIPT);
-  printReceiptOnly();
+  printReceiptSmart();
 }
 
 function renderDashboard(){if(!ROLE_DATA.isAdmin)return;const d=ROLE_DATA.dashboard||{};$('mSales').textContent=money(d.sales);$('mBills').textContent=d.bills||0;$('mDiscount').textContent=money(d.discount)}
@@ -3202,7 +3385,7 @@ async function toggleStaff(id,active){
 
 
 function renderSalesAdmin(){if(!ROLE_DATA.isAdmin)return;$('salesAdminBody').innerHTML=(ROLE_DATA.recentSales||[]).map(r=>`<tr><td><b>${esc(r.billNo)}</b></td><td>${esc(r.datetime)}</td><td>${esc(r.staff)}</td><td>${money(r.subtotal)}</td><td>${money(r.discount)}</td><td><b>${money(r.net)}</b></td><td>${esc(r.payment)}</td><td><span class="pill ${r.status==='ยกเลิก'?'cancel':'ok'}">${esc(r.status)}</span></td><td><button class="miniBtn edit" onclick="printBill('${esc(r.billNo)}')">พิมพ์</button> ${r.status!=='ยกเลิก'?`<button class="miniBtn danger" onclick="askCancel('${esc(r.billNo)}')">ยกเลิก</button>`:''}</td></tr>`).join('')}
-function printBill(billNo){showLoading(true);google.script.run.withSuccessHandler(r=>{showLoading(false);LAST_RECEIPT=r;buildReceipt(r);setTimeout(()=>printReceiptOnly(),100)}).withFailureHandler(e=>{showLoading(false);toast(e.message)}).getReceipt(SESSION.token,billNo)}
+function printBill(billNo){showLoading(true);google.script.run.withSuccessHandler(r=>{showLoading(false);LAST_RECEIPT=r;buildReceipt(r);setTimeout(()=>printReceiptSmart(),100)}).withFailureHandler(e=>{showLoading(false);toast(e.message)}).getReceipt(SESSION.token,billNo)}
 async function askCancel(billNo){
   CANCEL_BILL=billNo;
   const r=await Swal.fire({
