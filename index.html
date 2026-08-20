@@ -1834,7 +1834,7 @@ body.cart-open{overflow:auto}
 const $=id=>document.getElementById(id);
 const money=n=>'฿'+Number(n||0).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-let DATA={products:[]},ROLE_DATA={},CART=[],SESSION=null,PAYMENT='เงินสด',PAY_INPUT='',DISCOUNT_MODE='BAHT',LAST_RECEIPT=null,CANCEL_BILL='',BUSY=false,SHIFT=null,PRINTER={connected:false,name:''};
+let DATA={products:[]},ROLE_DATA={},CART=[],SESSION=null,PAYMENT='เงินสด',PAY_INPUT='',DISCOUNT_MODE='BAHT',LAST_RECEIPT=null,CANCEL_BILL='',BUSY=false,SHIFT=null,PRINTER={connected:false,name:'',mode:''};
 let LOGIN_BUSY=false,DASH_MODE='DAY',DASH_REPORT=null;
 
 let LOADING_TIMER=null;
@@ -1926,6 +1926,11 @@ async function swalInput(title,label,value=''){
 }
 
 function boot(){
+  if(isIOSDevice()){
+    PRINTER={connected:true,name:'AirPrint',mode:'AIRPRINT'};
+    localStorage.setItem('posPrinterMode','AIRPRINT');
+    setTimeout(()=>{setPrinterButton('AirPrint พร้อมใช้',true);updateShiftUI();},0);
+  }
   restoreSession();
 }
 
@@ -2541,7 +2546,7 @@ function updateShiftUI(){
   if(!b)return;
   b.textContent=open?'กะเปิดอยู่':'ยังไม่เปิดกะ';
   b.classList.toggle('open',open);b.classList.toggle('closed',!open);
-  $('drawerBtn').disabled=!(open&&PRINTER.connected);
+  $('drawerBtn').disabled=!(open&&PRINTER.connected&&PRINTER.mode==='QZ');
 }
 async function openShiftDialog(){
   if(!SESSION){login();return}
@@ -2606,12 +2611,43 @@ function confirmCloseShift(actual,note){
   .closeShiftV2(SESSION.token,Number(actual||0),note||'');
 }
 
+function isIOSDevice(){
+  const ua=navigator.userAgent||'';
+  const platform=navigator.platform||'';
+  const touchMac=platform==='MacIntel' && navigator.maxTouchPoints>1;
+  return /iPhone|iPad|iPod/i.test(ua) || touchMac;
+}
+
+function setPrinterButton(label,connected){
+  const btn=$('printerBtn');
+  if(!btn)return;
+  btn.innerHTML='<img class="statusIcon" src="https://cdn-icons-png.flaticon.com/512/3022/3022251.png" alt="">'+esc(label);
+  btn.classList.toggle('connected',!!connected);
+}
+
 async function connectPrinter(){
+  if(isIOSDevice()){
+    PRINTER={connected:true,name:'AirPrint',mode:'AIRPRINT'};
+    localStorage.setItem('posPrinterMode','AIRPRINT');
+    localStorage.removeItem('posPrinterName');
+    setPrinterButton('AirPrint พร้อมใช้',true);
+    updateShiftUI();
+
+    await Swal.fire({
+      icon:'success',
+      title:'พร้อมพิมพ์บน iPhone',
+      html:'ใช้ <b>AirPrint</b><br><span style="font-size:12px;color:#727986">เมื่อกดพิมพ์ ให้เลือกเครื่องพิมพ์จากเมนู “เครื่องพิมพ์” ของ iPhone</span>',
+      confirmButtonText:'ตกลง',
+      customClass:{popup:'pos-swal'}
+    });
+    return;
+  }
+
   try{
-    if(typeof qz==='undefined') throw new Error('ไม่พบ QZ Tray');
-    if(!qz.websocket.isActive()) await qz.websocket.connect();
+    if(typeof qz==='undefined') throw new Error('ไม่พบ QZ Tray กรุณาติดตั้งและเปิด QZ Tray บนคอมพิวเตอร์');
+    if(!qz.websocket.isActive()) await qz.websocket.connect({retries:2,delay:1});
     const printers=await qz.printers.find();
-    if(!printers||!printers.length) throw new Error('ไม่พบเครื่องพิมพ์');
+    if(!printers||!printers.length) throw new Error('ไม่พบเครื่องพิมพ์ในคอมพิวเตอร์');
 
     const saved=localStorage.getItem('posPrinterName');
     let name=saved&&printers.includes(saved)?saved:'';
@@ -2635,23 +2671,31 @@ async function connectPrinter(){
     }
 
     if(!printers.includes(name)) throw new Error('ไม่พบเครื่องพิมพ์ชื่อนี้');
-    PRINTER={connected:true,name};
+    PRINTER={connected:true,name,mode:'QZ'};
     localStorage.setItem('posPrinterName',name);
-    $('printerBtn').innerHTML='<img class="statusIcon" src="https://cdn-icons-png.flaticon.com/512/3022/3022251.png" alt="">'+esc(name);
-    $('printerBtn').classList.add('connected');
+    localStorage.setItem('posPrinterMode','QZ');
+    setPrinterButton(name,true);
     updateShiftUI();
     toastType('เชื่อมเครื่องพิมพ์แล้ว','success');
   }catch(e){
-    PRINTER={connected:false,name:''};
-    $('printerBtn').innerHTML='<img class="statusIcon" src="https://cdn-icons-png.flaticon.com/512/3022/3022251.png" alt="">เชื่อมเครื่องพิมพ์';
-    $('printerBtn').classList.remove('connected');
+    PRINTER={connected:false,name:'',mode:''};
+    localStorage.removeItem('posPrinterMode');
+    setPrinterButton('เชื่อมเครื่องพิมพ์',false);
     updateShiftUI();
-    toastType(e.message||'เชื่อมเครื่องพิมพ์ไม่ได้','error');
+    Swal.fire({
+      icon:'error',
+      title:'เชื่อมเครื่องพิมพ์ไม่ได้',
+      text:(e&&e.message)||'กรุณาตรวจสอบ QZ Tray และเครื่องพิมพ์',
+      confirmButtonText:'ตกลง',
+      customClass:{popup:'pos-swal'}
+    });
   }
 }
 async function pulseCashDrawer(){
   if(!PRINTER.connected) throw new Error('กรุณาเชื่อมเครื่องพิมพ์ก่อน');
+  if(PRINTER.mode==='AIRPRINT') throw new Error('AirPrint บน iPhone ไม่สามารถสั่งเปิดลิ้นชักเงินสดอัตโนมัติได้');
   if(!SHIFT?.open) throw new Error('กรุณาเปิดกะก่อน');
+  if(typeof qz==='undefined'||!qz.websocket.isActive()) throw new Error('QZ Tray ยังไม่ได้เชื่อมต่อ');
   const cfg=qz.configs.create(PRINTER.name,{encoding:'CP874'});
   const data=[{type:'raw',format:'command',data:'\x1B\x70\x00\x19\xFA'}];
   await qz.print(cfg,data);
@@ -2664,7 +2708,7 @@ async function openDrawerManual(){
   }catch(e){toast(e.message||'เปิดลิ้นชักไม่ได้')}
 }
 async function autoDrawerAfterCashSale(){
-  if(PAYMENT!=='เงินสด'||!PRINTER.connected||!SHIFT?.open)return;
+  if(PAYMENT!=='เงินสด'||!PRINTER.connected||PRINTER.mode!=='QZ'||!SHIFT?.open)return;
   try{
     await pulseCashDrawer();
     google.script.run.logCashDrawerOpen(SESSION.token,'SALE');
@@ -2683,12 +2727,12 @@ function checkout(){
   google.script.run.withSuccessHandler(r=>{
     BUSY=false;showLoading(false);
     LAST_RECEIPT=r.receipt;buildReceipt(r.receipt);$('reprintBtn').disabled=false;
-    const isAdmin=SESSION.user.role==='ADMIN';
+    const shouldPrint=!!PRINTER.connected;
     const paidType=PAYMENT;
     if(paidType==='เงินสด')autoDrawerAfterCashSale();
     CART=[];$('discountValue').value=0;$('note').value='';DISCOUNT_MODE='BAHT';PAYMENT='เงินสด';PAY_INPUT='';
     renderCart();updateAllProductCardStates();closeCartSheet();toastType('✓ ชำระสำเร็จ · '+r.billNo,'success');
-    if(isAdmin)setTimeout(()=>printReceiptOnly(),120);
+    if(shouldPrint)setTimeout(()=>printReceiptOnly(),180);
     refreshAfterSale();
   }).withFailureHandler(e=>{
     BUSY=false;showLoading(false);renderCart();updatePaymentModal();toast(e.message||'ชำระเงินไม่สำเร็จ')
