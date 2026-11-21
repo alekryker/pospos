@@ -167,6 +167,8 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .note{width:100%;margin-bottom:12px}
 .nnames{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}.nnames:empty{display:none}
 .nnames button{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:13.5px;cursor:pointer}
+.nnames.need button{border-color:var(--danger);animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .nnames button.on{background:var(--accentInk);color:var(--bg);border-color:transparent}
 .sum{display:flex;justify-content:space-between;font-size:13.5px;color:var(--sub);padding:2px 0}
 .sum.net{color:var(--ink);font-weight:700;font-size:15px;padding-top:8px;align-items:baseline}
@@ -827,10 +829,11 @@ function totals(){const sub=CART.reduce((a,x)=>a+x.qty*x.price,0),v=Math.max(0,N
   let d=DISC_MODE==='PERCENT'?sub*Math.min(v,100)/100:v;d=Math.round(Math.min(d,sub)*100)/100;return{subtotal:sub,discount:d,net:Math.max(0,sub-d),count:CART.reduce((a,x)=>a+x.qty,0)}}
 function renderNoteNames(){const el=$('noteNames');if(!el)return;const cur=$('note').value.trim(),ns=shop().noteNames||[];
   el.innerHTML=ns.map(n=>`<button type="button" data-nn="${esc(n)}" class="${noteHas(cur,n)?'on':''}">${esc(n)}</button>`).join('')}
+const noteNameOk=()=>{const ns=shop().noteNames||[];return !ns.length||ns.some(n=>noteHas($('note').value.trim(),n))};
 const noteHas=(t,n)=>t.split(/\s*·\s*/).includes(n);
 function pickNoteName(n){const ns=shop().noteNames||[],had=noteHas($('note').value.trim(),n);
   const rest=$('note').value.trim().split(/\s*·\s*/).filter(x=>x&&!ns.includes(x));
-  $('note').value=(had?rest:[n,...rest]).join(' · ');renderNoteNames()}
+  $('note').value=(had?rest:[n,...rest]).join(' · ');$('noteNames').classList.remove('need');renderNoteNames()}
 function renderCart(){renderNoteNames();
   const t=totals();
   $('clist').innerHTML=CART.length?CART.map(x=>{const p=prodById(x.id)||{};return `<div class="citem"><div class="th">${p.image?`<img src="${esc(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}</div>
@@ -901,6 +904,7 @@ function updatePay(){if(!payModal)return;const t=totals(),el=payModal.el,diff=Nu
 function payKey(k){if(k==='⌫')PAY.input=PAY.input.slice(0,-1);else if(k==='.'){if(!PAY.input.includes('.'))PAY.input=(PAY.input||'0')+'.'}else if(PAY.input.length<10)PAY.input=(PAY.input==='0'?'':PAY.input)+k;updatePay()}
 function openPayment(){
   if(BUSY||!CART.length)return;if(!SHIFT){toast('กรุณาเปิดกะก่อนขาย','warn');shiftDialog();return}
+  if(!noteNameOk()){toast('กรุณากดเลือกชื่อพนักงานก่อนชำระเงิน','warn');openCart();const el=$('noteNames');if(el){el.classList.remove('need');void el.offsetWidth;el.classList.add('need');el.scrollIntoView({block:'center',behavior:'smooth'})}return}
   PAY={method:'QR',input:''};closeCart();const t=totals(),sh=shop();
   payModal=modal({title:'ชำระเงิน',body:`<div class="ptabs">${PAYMENTS.map(([m,ic])=>`<button class="ptab ${m==='QR'?'on':''}" data-pm="${m}"><span>${ic}</span>${m}</button>`).join('')}</div>
     <div id="payCash" class="hidden"><div class="pdisp"><div class="lbl">รับเงินมา</div><div class="val num" id="pVal">0</div>
@@ -927,7 +931,7 @@ document.addEventListener('keydown',e=>{if(!payModal||PAY.method!=='เงิน
 function nextBillNo(){const d=new Date(),day=`${String(d.getFullYear()).slice(-2)}${pad(d.getMonth()+1)}${pad(d.getDate())}`,seq=local.get('seq',{});
   seq[day]=(seq[day]||0)+1;Object.keys(seq).forEach(k=>{if(k<day)delete seq[k]});local.set('seq',seq);return `${DEV.code}${day}-${String(seq[day]).padStart(3,'0')}`}
 async function checkout(){
-  if(BUSY)return;const t=totals(),payment=PAY.method,paid=payment==='เงินสด'?Number(PAY.input||t.net):t.net;
+  if(BUSY)return;if(!noteNameOk()){toast('กรุณากดเลือกชื่อพนักงานก่อนชำระเงิน','warn');return}const t=totals(),payment=PAY.method,paid=payment==='เงินสด'?Number(PAY.input||t.net):t.net;
   for(const c of CART){const p=prodById(c.id);if(!p||Number(p.stock)<c.qty){toast('สต๊อก '+c.name+' ไม่พอ','err');return}}
   BUSY=true;
   try{const now=Date.now();
