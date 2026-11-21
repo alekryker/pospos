@@ -340,7 +340,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
   <div class="sp"></div>
   <button class="pill hidden" id="syncPill" data-act="sync"><span class="dot"></span><span>ซิงก์</span></button>
   <button class="pill" id="shiftPill" data-act="shift"><span class="dot"></span><span>กะ</span></button>
-  <button class="pill adminOnly" id="printerPill" data-act="goPrinter"><span class="dot"></span><span>เครื่องพิมพ์</span></button>
+  <button class="pill" id="printerPill" data-act="goPrinter"><span class="dot"></span><span>เครื่องพิมพ์</span></button>
   <button class="iconBtn" data-act="theme" title="สลับธีม" id="themeBtn"></button>
   <button class="iconBtn" data-act="lock" title="ล็อก / สลับพนักงาน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
   <button class="iconBtn" data-act="signOut" title="ออกจากระบบ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
@@ -422,7 +422,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
       <div class="card"><h4>การเชื่อมต่อ</h4><div id="connBox"></div></div>
       <div class="card"><h4>ธีม</h4>
         <div class="seg full" id="themeSeg"><button data-theme="light">☀️ สว่าง</button><button data-theme="dark">🌙 มืด</button><button data-theme="auto">อัตโนมัติ</button></div></div>
-      <div class="card adminOnly" id="printerCard">
+      <div class="card" id="printerCard">
         <h4>เครื่องพิมพ์ใบเสร็จ (เครื่องนี้)</h4>
         <div class="opts" id="pModes"></div>
         <div id="pStatus" style="margin:12px 0 4px;font-size:13.5px"></div>
@@ -827,9 +827,9 @@ function changeQty(id,d){const c=CART.find(x=>x.id===id),p=prodById(id);if(!c)re
   if(c.qty<=0)CART=CART.filter(x=>x.id!==id);else if(p&&c.qty>Number(p.stock)){c.qty=Number(p.stock);toast('ถึงจำนวนสต๊อกสูงสุดแล้ว','warn')}updateCard(id);renderCart()}
 function totals(){const sub=CART.reduce((a,x)=>a+x.qty*x.price,0),v=Math.max(0,Number($('discVal').value)||0);
   let d=DISC_MODE==='PERCENT'?sub*Math.min(v,100)/100:v;d=Math.round(Math.min(d,sub)*100)/100;return{subtotal:sub,discount:d,net:Math.max(0,sub-d),count:CART.reduce((a,x)=>a+x.qty,0)}}
-function renderNoteNames(){const el=$('noteNames');if(!el)return;const cur=$('note').value.trim(),ns=shop().noteNames||[];
+function renderNoteNames(){const el=$('noteNames');if(!el)return;const cur=$('note').value.trim(),ns=isAdmin()?(shop().noteNames||[]):[];
   el.innerHTML=ns.map(n=>`<button type="button" data-nn="${esc(n)}" class="${noteHas(cur,n)?'on':''}">${esc(n)}</button>`).join('')}
-const noteNameOk=()=>{const ns=shop().noteNames||[];return !ns.length||ns.some(n=>noteHas($('note').value.trim(),n))};
+const noteNameOk=()=>{if(!isAdmin())return true;const ns=shop().noteNames||[];return !ns.length||ns.some(n=>noteHas($('note').value.trim(),n))};
 const noteHas=(t,n)=>t.split(/\s*·\s*/).includes(n);
 function pickNoteName(n){const ns=shop().noteNames||[],had=noteHas($('note').value.trim(),n);
   const rest=$('note').value.trim().split(/\s*·\s*/).filter(x=>x&&!ns.includes(x));
@@ -913,7 +913,7 @@ function openPayment(){
       <div class="keys">${['7','8','9','4','5','6','1','2','3','.','0','⌫'].map(k=>`<button data-key="${k}">${k}</button>`).join('')}</div></div>
     <div id="payQR"><div class="noncash qrBox">
       ${ppReady()?`<img class="ppQr" src="${qrDataURL(ppPayload(sh.promptpay,t.net),8)}" alt="PromptPay QR"><div class="ppName">พร้อมเพย์ ${esc(fmtPP(sh.promptpay))}</div><b class="num">${money(t.net)}</b>
-        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>${isAdmin()?'<button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>':''}`
+        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>${true?'<button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>':''}`
       :`<div class="ic">📱</div><div class="muted">ยังไม่ได้ตั้งเลขพร้อมเพย์ (ตั้งค่า → ร้าน)</div><b class="num">${money(t.net)}</b>`}</div></div>
     <div id="payOther" class="hidden"><div class="noncash"><div class="ic">🏦</div><div class="muted" style="margin-top:6px">ตรวจสอบยอดเงินเข้า แล้วกดยืนยัน</div><b class="num">${money(t.net)}</b></div></div>`,
     actions:[{label:'ยืนยันชำระเงิน',cls:'green',onClick:a=>{const n=totals().net;
@@ -942,13 +942,13 @@ async function checkout(){
     CART.forEach(c=>{const p=prodById(c.id);p.stock=Number(p.stock)-c.qty});cacheSave();
     resetBill();renderChips();showDone(s);
     if(payment==='เงินสด'||payment==='QR')autoDrawer();
-    if(isAdmin()&&PRINTER.connected&&DEV.autoPrint)setTimeout(()=>printReceipt(receiptOf(s)),250);
+    if(PRINTER.connected&&DEV.autoPrint)setTimeout(()=>printReceipt(receiptOf(s)),250);
     notifyTg(tgSale(s),'admin');if(USER.role!=='ADMIN')notifyTg(tgSale(s),'staff');
   }catch(e){toast('บันทึกบิลไม่สำเร็จ: '+errMsg(e),'err')}finally{BUSY=false;renderCart();renderSync()}
 }
 function showDone(s){modal({title:'',closable:false,body:`<div class="done"><div class="ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
   <h3>ชำระเงินสำเร็จ</h3><div class="bill">บิล ${esc(s.billNo)} · ${esc(s.payment)} · ${money(s.net)}</div>${s.payment==='เงินสด'?`<div class="chg"><small>เงินทอน</small><b class="num">${money(s.change)}</b></div>`:''}</div>`,
-  actions:[...(isAdmin()?[{label:'🖨 พิมพ์ใบเสร็จ',onClick:()=>printReceipt(receiptOf(s))}]:[]),{label:'บิลใหม่',cls:'green',onClick:a=>a.close()}]})}
+  actions:[...(true?[{label:'🖨 พิมพ์ใบเสร็จ',onClick:()=>printReceipt(receiptOf(s))}]:[]),{label:'บิลใหม่',cls:'green',onClick:a=>a.close()}]})}
 function lowStockAlert(s){const l=s.items.map(i=>prodById(i.id)).filter(p=>p&&Number(p.low)>0&&Number(p.stock)<=Number(p.low));if(l.length)notifyTg('⚠️ <b>สต๊อกใกล้หมด</b>\n'+l.map(p=>`• ${tgEsc(p.name)} เหลือ ${p.stock}`).join('\n'))}
 
 /* ======================= BILLS ======================= */
@@ -977,7 +977,7 @@ async function openBill(no){
   let s=await idbGet('outbox',no);const pending=!!s;
   if(!s)try{s=await API.getSale(no)}catch(e){toast(errMsg(e),'err');return}
   if(!s)return;
-  const acts=isAdmin()?[{label:'🖨 พิมพ์',cls:'green',onClick:()=>printReceipt(receiptOf(s))}]:[];
+  const acts=true?[{label:'🖨 พิมพ์',cls:'green',onClick:()=>printReceipt(receiptOf(s))}]:[];
   if(isAdmin()&&s.status!=='void'&&!pending)acts.unshift({label:'ยกเลิกบิล',cls:'red',onClick:a=>{a.close();voidBill(s)}});
   modal({title:'ใบเสร็จ '+esc(s.billNo),body:`${s.status==='void'?`<div class="tag bad" style="margin-bottom:8px">ยกเลิกแล้ว${s.voidReason?': '+esc(s.voidReason):''}</div>`:''}${pending?'<div class="tag warn" style="margin-bottom:8px">ยังไม่ได้ส่งขึ้นฐานข้อมูล</div>':''}
     <div class="paper" style="width:${Number(DEV.paper)===58?'230px':'300px'}">${receiptHtml(receiptOf(s))}</div>`,actions:acts});
@@ -1367,7 +1367,7 @@ async function pulseDrawer(){if(!PRINTER.connected)throw new Error('กรุณ
   if(PRINTER.mode==='BT'||PRINTER.mode==='WEBUSB')return sendRaw([new Uint8Array([0x1B,0x70,0x00,0x19,0xFA])]);
   if(PRINTER.mode==='QZ')return qz.print(qz.configs.create(PRINTER.name),[{type:'raw',format:'command',flavor:'plain',data:'\x1B\x70\x00\x19\xFA'}]);throw new Error('หน้าต่างพิมพ์ (AirPrint) สั่งเปิดลิ้นชักไม่ได้')}
 async function openDrawerManual(){try{await pulseDrawer();toast('เปิดลิ้นชักแล้ว','ok')}catch(e){toast(errMsg(e),'warn')}}
-async function autoDrawer(){if(isAdmin()&&PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
+async function autoDrawer(){if(PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
 
 /* ======================= SETTINGS / VIEW ======================= */
 function loadSettingsUI(){const s=shop();$('rShop').value=s.shop||'';$('rHead').value=s.head||'';$('rFoot').value=s.foot||'';$('rNames').value=(s.noteNames||[]).join(', ');$('ppId').value=s.promptpay||'';$('pAuto').checked=!!DEV.autoPrint;
