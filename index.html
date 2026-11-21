@@ -729,7 +729,23 @@ function loginAs(s){
   $('staffLine').textContent=s.name+(s.role==='ADMIN'?' · แอดมิน':' · แคชเชียร์');
   $('uName').textContent=s.name;$('uRole').textContent=(s.role==='ADMIN'?'ผู้ดูแลระบบ':'แคชเชียร์')+' · เครื่อง '+DEV.code;$('uAvatar').textContent=s.name.charAt(0).toUpperCase();
   document.querySelectorAll('.adminOnly').forEach(x=>x.classList.toggle('hidden',!isAdmin()));
-  if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();if(isAdmin())loadTgUI();
+  if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();if(isAdmin()){loadTgUI();setTimeout(keepImages,2500)}
+}
+/* ย้ายรูปสินค้าที่เป็นลิงก์ภายนอก (เช่น go.pospos.co / Drive) มาเก็บใน Supabase Storage ถาวร — ทำเองเบื้องหลังเมื่อแอดมินเข้าใช้ */
+let IMG_BUSY=false;const IMG_FAIL=new Set();
+async function keepImages(){
+  if(IMG_BUSY||DEMO||API.kind!=='cloud'||!isAdmin()||!navigator.onLine)return;
+  const own=new URL(SB_URL).host,todo=PRODUCTS.filter(p=>/^https?:\/\//i.test(p.image||'')&&!p.image.includes(own)&&!IMG_FAIL.has(p.image));
+  if(!todo.length)return;IMG_BUSY=true;let ok=0;
+  const one=async p=>{const src=p.image;try{
+      const r=await fetch(src,{mode:'cors',referrerPolicy:'no-referrer'});if(!r.ok)throw new Error('HTTP '+r.status);
+      const url=await API.uploadImage(await shrinkImage(await r.blob()));
+      chk(await sb.from('products').update({image:url,updated_at:iso(Date.now())}).eq('id',p.id).eq('image',src));
+      const q=prodById(p.id);if(q&&q.image===src)q.image=url;ok++;
+    }catch(e){IMG_FAIL.add(src);console.warn('keepImages',p.id,src,e)}};
+  try{const q=[...todo];await Promise.all([0,1,2].map(async()=>{while(q.length)await one(q.shift())}))}
+  finally{IMG_BUSY=false}
+  if(ok){cacheSave();renderAll();toast(`ย้ายรูปสินค้า ${ok} รูปไปเก็บในเซิร์ฟเวอร์ถาวรแล้ว`,'ok')}
 }
 async function signOutDevice(msg){USER=null;sessionStorage.removeItem(KP+'p3:user');closeCart();try{await sb.auth.signOut()}catch(e){}AUTH_UID=null;showShopLogin(msg||'')}
 async function lock(){
@@ -1033,7 +1049,7 @@ async function editProduct(id){
     if(v._del){await guard(()=>API.deleteProduct(id),'กำลังลบ...');PRODUCTS=PRODUCTS.filter(x=>x.id!==id);CART=CART.filter(c=>c.id!==id);toast('ลบสินค้าแล้ว','ok')}
     else{if(id&&v.id!==id)await API.deleteProduct(id);await guard(()=>API.upsertProducts([v]),'กำลังบันทึก...');
       const i=PRODUCTS.findIndex(x=>x.id===id);if(i>-1)PRODUCTS[i]=v;else PRODUCTS.push(v);
-      CART.forEach(c=>{if(c.id===id){c.id=v.id;c.name=v.name;c.price=v.price}});toast('บันทึกสินค้าแล้ว','ok')}
+      CART.forEach(c=>{if(c.id===id){c.id=v.id;c.name=v.name;c.price=v.price}});toast('บันทึกสินค้าแล้ว','ok');setTimeout(keepImages,800)}
     cacheSave();renderAll();PROD_MODAL&&PROD_MODAL.redraw();
   }catch(e){}
 }
