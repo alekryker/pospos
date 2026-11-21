@@ -528,6 +528,7 @@ const LocalAPI={
   async upsertProducts(l){const m=new Map(local.get('products',[]).map(p=>[p.id,p]));l.forEach(p=>m.set(p.id,p));local.set('products',[...m.values()])},
   async replaceProducts(l){local.set('products',l)},
   async deleteProduct(id){local.set('products',local.get('products',[]).filter(p=>p.id!==id))},
+  async setSort(l){const m=new Map(l.map(p=>[p.id,p.order]));local.set('products',local.get('products',[]).map(p=>m.has(p.id)?{...p,order:m.get(p.id)}:p))},
   async uploadImage(blob){return new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(blob)})},
   async upsertStaff(s){const l=local.get('staff',[]),i=l.findIndex(x=>x.id===s.id);if(i>-1)l[i]=s;else l.push(s);local.set('staff',l)},
   async deleteStaff(id){local.set('staff',local.get('staff',[]).filter(x=>x.id!==id))},
@@ -571,6 +572,7 @@ const CloudAPI={
   async upsertProducts(l){for(let i=0;i<l.length;i+=500)chk(await sb.from('products').upsert(l.slice(i,i+500).map(p2db)))},
   async replaceProducts(l){chk(await sb.from('products').delete().neq('id','\u0000'));await CloudAPI.upsertProducts(l)},
   async deleteProduct(id){chk(await sb.from('products').delete().eq('id',id))},
+  async setSort(l){const t=iso(Date.now());await Promise.all(l.map(async p=>chk(await sb.from('products').update({sort:p.order,updated_at:t}).eq('id',p.id))))},
   async uploadImage(blob){const path=`p/${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}.jpg`;
     const {error}=await sb.storage.from('pos-products').upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000'});if(error)throw error;
     return sb.storage.from('pos-products').getPublicUrl(path).data.publicUrl},
@@ -1013,11 +1015,16 @@ function adminProducts(){
         const l=PRODUCTS.filter(p=>!q||String(p.name).toLowerCase().includes(q)||String(p.id).toLowerCase().includes(q)).sort((x,y)=>(x.order||0)-(y.order||0));
         a.el.querySelector('#apList').innerHTML=l.length?l.map(p=>`<div class="row">${p.image?`<img class="th" src="${esc(p.image)}" referrerpolicy="no-referrer" alt="">`:'<span class="th"></span>'}
           <div class="grow"><b>${esc(p.name)} ${p.active===false?'<span class="tag bad">ปิดขาย</span>':''}</b><small>${esc(p.id)} · ${esc(p.category||'-')} · ${money0(p.price)} · เหลือ ${p.stock}</small></div>
-          <button class="mini" data-mv="${esc(p.id)}" data-d="-1">↑</button><button class="mini" data-mv="${esc(p.id)}" data-d="1">↓</button><button class="mini green" data-ep="${esc(p.id)}">แก้</button></div>`).join(''):'<div class="muted" style="padding:10px 0">ไม่พบสินค้า</div>'};
+          <button class="mini" data-mv="${esc(p.id)}" data-d="top" title="ขึ้นบนสุด">⤒</button><button class="mini" data-mv="${esc(p.id)}" data-d="-1">↑</button><button class="mini" data-mv="${esc(p.id)}" data-d="1">↓</button><button class="mini green" data-ep="${esc(p.id)}">แก้</button></div>`).join(''):'<div class="muted" style="padding:10px 0">ไม่พบสินค้า</div>'};
       a.redraw();a.el.querySelector('#apQ').addEventListener('input',a.redraw);
       a.el.addEventListener('click',async e=>{const ep=e.target.closest('[data-ep]'),mv=e.target.closest('[data-mv]');if(ep)editProduct(ep.dataset.ep);
-        if(mv){const l=PRODUCTS.slice().sort((x,y)=>(x.order||0)-(y.order||0)),i=l.findIndex(p=>p.id===mv.dataset.mv),j=i+Number(mv.dataset.d);if(j<0||j>=l.length)return;
-          [l[i],l[j]]=[l[j],l[i]];l.forEach((p,k)=>p.order=k+1);a.redraw();renderGrid();try{await API.upsertProducts([l[i],l[j]])}catch(err){toast(errMsg(err),'err')}}})}});
+        if(mv){const l=PRODUCTS.slice().sort((x,y)=>(x.order||0)-(y.order||0)),i=l.findIndex(p=>p.id===mv.dataset.mv);if(i<0)return;let ch=[];
+          if(mv.dataset.d==='top'){if(i===0)return;l[i].order=(l[0].order||0)-1;ch=[l[i]]}
+          else{const j=i+Number(mv.dataset.d);if(j<0||j>=l.length)return;
+            if((l[i].order||0)!==(l[j].order||0)){const t=l[i].order;l[i].order=l[j].order;l[j].order=t;ch=[l[i],l[j]]}
+            else{[l[i],l[j]]=[l[j],l[i]];l.forEach((p,k)=>{if(p.order!==k+1){p.order=k+1;ch.push(p)}})}}
+          a.redraw();renderGrid();if(mv.dataset.d==='top')toast('ย้ายขึ้นบนสุดแล้ว','ok');
+          try{await API.setSort(ch)}catch(err){toast(errMsg(err),'err')}}})}});
   PROD_MODAL.onClose=()=>{PROD_MODAL=null};
 }
 async function shrinkImage(file,max=520){
