@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f5f5f2">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-180.png">
 <title>POS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.5/qz-tray.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
 <script>
 (function(){try{var p=/[?&]demo=1/.test(location.search)?'demo:':'';var t=JSON.parse(localStorage.getItem(p+'p2:theme')||'"light"');
 if(t==='auto')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){}})();
@@ -84,26 +87,26 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .chip.on{background:var(--accentInk);border-color:var(--accentInk);color:var(--bg)}
 .chip.on em{background:color-mix(in srgb,var(--bg) 18%,transparent);color:var(--bg)}
 
-.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:6px 12px 22px}
-@media (min-width:700px){.grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:6px 18px 22px}}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:6px 12px 22px}
+@media (min-width:700px){.grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;padding:6px 18px 22px}}
 @media (min-width:1000px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media (min-width:1280px){.grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media (min-width:1600px){.grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
 .prod{position:relative;display:flex;flex-direction:column;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px;box-shadow:var(--shadow);transition:transform .1s,border-color .2s,box-shadow .2s;cursor:pointer;user-select:none;-webkit-user-select:none}
-/* มือถือ: 4 สินค้าต่อแถว การ์ดกะทัดรัด */
+/* มือถือ: 3 สินค้าต่อแถว */
 @media (max-width:699px){
   .tools{padding-left:12px;padding-right:12px}
-  .prod{padding:4px;border-radius:13px}
+  .prod{padding:6px;border-radius:15px}
   .pimg{border-radius:10px}
   .pimg img{padding:5%}
-  .pimg.ph .ini{font-size:18px}
-  .pbody{padding:5px 2px 2px;gap:2px}
-  .pname{font-size:11px;line-height:1.25;min-height:28px;font-weight:600}
-  .prow{flex-direction:column;align-items:flex-start;gap:1px}
-  .pprice{font-size:13px}
-  .pstock{font-size:9px;padding:0 5px}
-  .badge{top:3px;right:3px;min-width:22px;height:22px;padding:0 6px;font-size:12px}
-  .minus{top:3px;left:3px;width:26px;height:26px;font-size:17px}
+  .pimg.ph .ini{font-size:22px}
+  .pbody{padding:7px 2px 2px;gap:3px}
+  .pname{font-size:12.5px;line-height:1.28;min-height:32px;font-weight:600}
+  .prow{flex-direction:column;align-items:flex-start;gap:2px}
+  .pprice{font-size:15px}
+  .pstock{font-size:10px;padding:1px 6px}
+  .badge{top:5px;right:5px;min-width:26px;height:26px;padding:0 7px;font-size:13px}
+  .minus{top:5px;left:5px;width:30px;height:30px;font-size:19px}
 }
 .prod:active{transform:scale(.97)}
 .prod.inCart{border-color:color-mix(in srgb,var(--brand) 70%,transparent);box-shadow:0 0 0 3px var(--brandSoft),var(--shadow)}
@@ -324,7 +327,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
   <div class="sp"></div>
   <button class="pill hidden" id="syncPill" data-act="sync"><span class="dot"></span><span>ซิงก์</span></button>
   <button class="pill" id="shiftPill" data-act="shift"><span class="dot"></span><span>กะ</span></button>
-  <button class="pill" id="printerPill" data-act="goPrinter"><span class="dot"></span><span>เครื่องพิมพ์</span></button>
+  <button class="pill adminOnly" id="printerPill" data-act="goPrinter"><span class="dot"></span><span>เครื่องพิมพ์</span></button>
   <button class="iconBtn" data-act="theme" title="สลับธีม" id="themeBtn"></button>
   <button class="iconBtn" data-act="lock" title="ล็อก / สลับพนักงาน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
 </header>
@@ -399,7 +402,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
       <div class="card"><h4>การเชื่อมต่อ</h4><div id="connBox"></div></div>
       <div class="card"><h4>ธีม</h4>
         <div class="seg full" id="themeSeg"><button data-theme="light">☀️ สว่าง</button><button data-theme="dark">🌙 มืด</button><button data-theme="auto">อัตโนมัติ</button></div></div>
-      <div class="card" id="printerCard">
+      <div class="card adminOnly" id="printerCard">
         <h4>เครื่องพิมพ์ใบเสร็จ (เครื่องนี้)</h4>
         <div class="opts" id="pModes"></div>
         <div id="pStatus" style="margin:12px 0 4px;font-size:13.5px"></div>
@@ -454,8 +457,9 @@ main{padding-bottom:calc(104px + var(--safeB))}
    POS 247 — ฐานข้อมูลเดียวบน Supabase ใช้ได้หลายเครื่องพร้อมกัน
    ออฟไลน์ก็ขายได้ บิลเข้าคิว (outbox) แล้วซิงก์ขึ้นเองเมื่อออนไลน์
    ====================================================================== */
-const SB_URL = '';   // ใส่ Project URL ของ Supabase (หรือกรอกในหน้าเว็บครั้งแรก)
-const SB_KEY = '';   // ใส่ anon public key
+const SB_URL = 'https://armhgexnmpgqwfpmhfxx.supabase.co';   // Supabase (โปรเจกต์ meedeepet · schema pos)
+const SB_KEY = 'sb_publishable_FiGOYIx9hAzdLZ-0DgM1lw_7vziMn5p'; // publishable key (เปิดเผยได้)
+const SB_SCHEMA = 'pos';
 const DEMO=/[?&]demo=1/.test(location.search);
 const KP=DEMO?'demo:':'';
 const OLD_API="https://script.google.com/macros/s/AKfycbzqb_FrN4HE8zs3Q27NzWhPqGooIn_J3HOR4mDKmbJYNvTQdsDbLkKtwVhind0uBodp2w/exec";
@@ -468,7 +472,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const pad=n=>String(n).padStart(2,'0');
 const dayKey=d=>{d=new Date(d);return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
 const fmtTime=ts=>new Date(ts).toLocaleString('th-TH',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
-const PAYMENTS=[['เงินสด','💵'],['QR','📱'],['โอน','🏦'],['บัตร','💳']];
+const PAYMENTS=[['QR','📱'],['เงินสด','💵'],['โอน','🏦'],['บัตร','💳']];
 const HUES=[160,190,215,250,280,320,350,25];
 const hue=s=>{let h=0;for(const c of String(s||''))h=(h*31+c.codePointAt(0))>>>0;return HUES[h%HUES.length]};
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -557,7 +561,7 @@ const CloudAPI={
   async notify(msg){return chk(await sb.rpc('notify',{msg}))},
   async tgCheck(rid){return chk(await sb.rpc('tg_check',{rid}))},
   async uploadSales(list){for(let i=0;i<list.length;i+=300)chk(await sb.from('sales').upsert(list.slice(i,i+300).map(sale2db),{onConflict:'bill_no',ignoreDuplicates:true}))},
-  subscribe(cb){sb.channel('pos247').on('postgres_changes',{event:'*',schema:'public'},p=>cb(p.table)).subscribe()}
+  subscribe(cb){sb.channel('pos247').on('postgres_changes',{event:'*',schema:SB_SCHEMA},p=>cb(p.table)).subscribe()}
 };
 let API=DEMO?LocalAPI:CloudAPI;
 
@@ -818,15 +822,15 @@ function updatePay(){if(!payModal)return;const t=totals(),el=payModal.el,diff=Nu
 function payKey(k){if(k==='⌫')PAY.input=PAY.input.slice(0,-1);else if(k==='.'){if(!PAY.input.includes('.'))PAY.input=(PAY.input||'0')+'.'}else if(PAY.input.length<10)PAY.input=(PAY.input==='0'?'':PAY.input)+k;updatePay()}
 function openPayment(){
   if(BUSY||!CART.length)return;if(!SHIFT){toast('กรุณาเปิดกะก่อนขาย','warn');shiftDialog();return}
-  PAY={method:'เงินสด',input:''};closeCart();const t=totals(),sh=shop();
-  payModal=modal({title:'ชำระเงิน',body:`<div class="ptabs">${PAYMENTS.map(([m,ic])=>`<button class="ptab ${m==='เงินสด'?'on':''}" data-pm="${m}"><span>${ic}</span>${m}</button>`).join('')}</div>
-    <div id="payCash"><div class="pdisp"><div class="lbl">รับเงินมา</div><div class="val num" id="pVal">0</div>
+  PAY={method:'QR',input:''};closeCart();const t=totals(),sh=shop();
+  payModal=modal({title:'ชำระเงิน',body:`<div class="ptabs">${PAYMENTS.map(([m,ic])=>`<button class="ptab ${m==='QR'?'on':''}" data-pm="${m}"><span>${ic}</span>${m}</button>`).join('')}</div>
+    <div id="payCash" class="hidden"><div class="pdisp"><div class="lbl">รับเงินมา</div><div class="val num" id="pVal">0</div>
       <div class="meta"><div><span class="lbl">ยอดที่ต้องชำระ</span><b class="num">${money(t.net)}</b></div><div class="chg" id="pChgBox" style="text-align:right"><span class="lbl" id="pChgLbl">เงินทอน</span><b class="num" id="pChg">฿0.00</b></div></div></div>
       <div class="quick"><button data-cash="full">พอดี</button>${cashSuggest(t.net).map(v=>`<button class="num" data-cash="${v}">${v.toLocaleString()}</button>`).join('')}</div>
       <div class="keys">${['7','8','9','4','5','6','1','2','3','.','0','⌫'].map(k=>`<button data-key="${k}">${k}</button>`).join('')}</div></div>
-    <div id="payQR" class="hidden"><div class="noncash qrBox">
+    <div id="payQR"><div class="noncash qrBox">
       ${ppReady()?`<img class="ppQr" src="${qrDataURL(ppPayload(sh.promptpay,t.net),8)}" alt="PromptPay QR"><div class="ppName">พร้อมเพย์ ${esc(fmtPP(sh.promptpay))}</div><b class="num">${money(t.net)}</b>
-        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div><button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>`
+        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>${isAdmin()?'<button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>':''}`
       :`<div class="ic">📱</div><div class="muted">ยังไม่ได้ตั้งเลขพร้อมเพย์ (ตั้งค่า → ร้าน)</div><b class="num">${money(t.net)}</b>`}</div></div>
     <div id="payOther" class="hidden"><div class="noncash"><div class="ic">🏦</div><div class="muted" style="margin-top:6px">ตรวจสอบยอดเงินเข้า แล้วกดยืนยัน</div><b class="num">${money(t.net)}</b></div></div>`,
     actions:[{label:'ยืนยันชำระเงิน',cls:'green',onClick:a=>{const n=totals().net;
@@ -854,14 +858,14 @@ async function checkout(){
     await idbPut('outbox',s);
     CART.forEach(c=>{const p=prodById(c.id);p.stock=Number(p.stock)-c.qty});cacheSave();
     resetBill();renderChips();showDone(s);
-    if(payment==='เงินสด')autoDrawer();
-    if(PRINTER.connected&&DEV.autoPrint)setTimeout(()=>printReceipt(receiptOf(s)),250);
+    if(payment==='เงินสด'||payment==='QR')autoDrawer();
+    if(isAdmin()&&PRINTER.connected&&DEV.autoPrint)setTimeout(()=>printReceipt(receiptOf(s)),250);
     notifyTg(tgSale(s));lowStockAlert(s);
   }catch(e){toast('บันทึกบิลไม่สำเร็จ: '+errMsg(e),'err')}finally{BUSY=false;renderCart();renderSync()}
 }
 function showDone(s){modal({title:'',closable:false,body:`<div class="done"><div class="ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
   <h3>ชำระเงินสำเร็จ</h3><div class="bill">บิล ${esc(s.billNo)} · ${esc(s.payment)} · ${money(s.net)}</div>${s.payment==='เงินสด'?`<div class="chg"><small>เงินทอน</small><b class="num">${money(s.change)}</b></div>`:''}</div>`,
-  actions:[{label:'🖨 พิมพ์ใบเสร็จ',onClick:()=>printReceipt(receiptOf(s))},{label:'บิลใหม่',cls:'green',onClick:a=>a.close()}]})}
+  actions:[...(isAdmin()?[{label:'🖨 พิมพ์ใบเสร็จ',onClick:()=>printReceipt(receiptOf(s))}]:[]),{label:'บิลใหม่',cls:'green',onClick:a=>a.close()}]})}
 function lowStockAlert(s){const l=s.items.map(i=>prodById(i.id)).filter(p=>p&&Number(p.low)>0&&Number(p.stock)<=Number(p.low));if(l.length)notifyTg('⚠️ <b>สต๊อกใกล้หมด</b>\n'+l.map(p=>`• ${tgEsc(p.name)} เหลือ ${p.stock}`).join('\n'))}
 
 /* ======================= BILLS ======================= */
@@ -883,7 +887,7 @@ async function openBill(no){
   let s=await idbGet('outbox',no);const pending=!!s;
   if(!s)try{s=await API.getSale(no)}catch(e){toast(errMsg(e),'err');return}
   if(!s)return;
-  const acts=[{label:'🖨 พิมพ์',cls:'green',onClick:()=>printReceipt(receiptOf(s))}];
+  const acts=isAdmin()?[{label:'🖨 พิมพ์',cls:'green',onClick:()=>printReceipt(receiptOf(s))}]:[];
   if(isAdmin()&&s.status!=='void'&&!pending)acts.unshift({label:'ยกเลิกบิล',cls:'red',onClick:a=>{a.close();voidBill(s)}});
   modal({title:'ใบเสร็จ '+esc(s.billNo),body:`${s.status==='void'?`<div class="tag bad" style="margin-bottom:8px">ยกเลิกแล้ว: ${esc(s.voidReason||'')}</div>`:''}${pending?'<div class="tag warn" style="margin-bottom:8px">ยังไม่ได้ส่งขึ้นฐานข้อมูล</div>':''}
     <div class="paper" style="width:${Number(DEV.paper)===58?'230px':'300px'}">${receiptHtml(receiptOf(s))}</div>`,actions:acts});
@@ -1157,7 +1161,7 @@ function initPrinter(){let m=DEV.printerMode;if(!MODES.find(x=>x[0]===m&&x[3]())
   if(m==='BT'&&navigator.bluetooth.getDevices)navigator.bluetooth.getDevices().then(ds=>{const d=(ds||[]).find(x=>x.name===DEV.printerName)||(ds||[])[0];if(d)connectBT(d).catch(()=>{})}).catch(()=>{});
   if(m==='QZ'&&DEV.printerName)connectQZ(true).catch(()=>{})}
 function setMode(m){if(PRINTER.mode===m)return;try{BT.device&&BT.device.gatt.connected&&BT.device.gatt.disconnect()}catch(e){}BT.char=null;PRINTER.mode=m;DEV.printerMode=m;saveDev();PRINTER.connected=m==='AIRPRINT';PRINTER.name=m==='AIRPRINT'?'หน้าต่างพิมพ์':'';updatePrinterUI()}
-function updatePrinterUI(){const pill=$('printerPill');pill.className='pill '+(PRINTER.connected?'on':'off');pill.lastElementChild.textContent=PRINTER.connected?(PRINTER.mode==='AIRPRINT'?'AirPrint':PRINTER.name||'พร้อมพิมพ์'):'ยังไม่เชื่อมเครื่องพิมพ์';
+function updatePrinterUI(){const pill=$('printerPill');pill.classList.toggle('on',PRINTER.connected);pill.classList.toggle('off',!PRINTER.connected);pill.lastElementChild.textContent=PRINTER.connected?(PRINTER.mode==='AIRPRINT'?'AirPrint':PRINTER.name||'พร้อมพิมพ์'):'ยังไม่เชื่อมเครื่องพิมพ์';
   $('pModes').innerHTML=MODES.map(([k,l,s,av])=>`<button class="opt ${PRINTER.mode===k?'on':''}" data-pmode="${k}" ${av()?'':'disabled'}><b>${l}</b><small>${av()?s:'อุปกรณ์นี้ไม่รองรับ'}</small></button>`).join('');
   const tips={BT:'เปิดเครื่องพิมพ์และ Bluetooth แล้วกดเชื่อมต่อ (Chrome บน Android หรือคอม)',WEBUSB:'ต่อสาย USB/OTG แล้วกดเชื่อมต่อ (Chrome)',QZ:'ติดตั้งและเปิดโปรแกรม QZ Tray ก่อน',AIRPRINT:'กดพิมพ์แล้วเลือกเครื่องพิมพ์จากหน้าต่างของระบบ (iPhone ใช้ AirPrint)'};
   $('pStatus').innerHTML=(PRINTER.connected?`<span class="tag ok">เชื่อมแล้ว</span> ${esc(PRINTER.name)}`:'<span class="tag warn">ยังไม่เชื่อม</span>')+`<div class="muted" style="font-size:12.5px;margin-top:6px">${tips[PRINTER.mode]||''}</div>`;
@@ -1198,7 +1202,7 @@ async function pulseDrawer(){if(!PRINTER.connected)throw new Error('กรุณ
   if(PRINTER.mode==='BT'||PRINTER.mode==='WEBUSB')return sendRaw([new Uint8Array([0x1B,0x70,0x00,0x19,0xFA])]);
   if(PRINTER.mode==='QZ')return qz.print(qz.configs.create(PRINTER.name),[{type:'raw',format:'command',flavor:'plain',data:'\x1B\x70\x00\x19\xFA'}]);throw new Error('หน้าต่างพิมพ์ (AirPrint) สั่งเปิดลิ้นชักไม่ได้')}
 async function openDrawerManual(){try{await pulseDrawer();toast('เปิดลิ้นชักแล้ว','ok')}catch(e){toast(errMsg(e),'warn')}}
-async function autoDrawer(){if(PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
+async function autoDrawer(){if(isAdmin()&&PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
 
 /* ======================= SETTINGS / VIEW ======================= */
 function loadSettingsUI(){const s=shop();$('rShop').value=s.shop||'';$('rHead').value=s.head||'';$('rFoot').value=s.foot||'';$('ppId').value=s.promptpay||'';$('pAuto').checked=!!DEV.autoPrint;
@@ -1252,6 +1256,8 @@ async function seedDemo(){
 /* ======================= BOOT ======================= */
 async function startApp(){
   loading(true,'กำลังโหลดข้อมูลร้าน...');
+  if(!DEMO&&navigator.onLine){try{const {data:u}=await sb.auth.getUser();const r=await sb.from('members').select('user_id').eq('user_id',u.user.id).maybeSingle();
+    if(!r.error&&!r.data){loading(false);gate(`${LOGO()}<p class="lead">บัญชีนี้ยังไม่ได้เปิดสิทธิ์ใช้ POS</p><div class="muted" style="text-align:center;margin-bottom:14px">${esc(u.user.email||'')}<br>ให้ผู้ดูแลเพิ่มบัญชีนี้ในตาราง pos.members</div><button class="btn block" id="nmOut">ออกจากระบบ</button>`);$('nmOut').onclick=async()=>{await sb.auth.signOut();location.reload()};return}}catch(e){}}
   try{applyData(await API.loadAll());setOnline(true)}
   catch(e){const c=local.get('cache',null);if(c){applyData(c);setOnline(false);toast('ออฟไลน์ — ใช้ข้อมูลล่าสุดในเครื่อง','warn')}else{loading(false);gate(`${LOGO()}<p class="lead">โหลดข้อมูลไม่ได้</p><div class="gerr">${esc(errMsg(e))}</div><button class="btn green block" onclick="location.reload()">ลองใหม่</button>`);return}}
   loading(false);
@@ -1261,6 +1267,7 @@ async function startApp(){
   if(s)loginAs(s);else if(!STAFF.length)showSetup();else showLock();
   syncNow();
 }
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 (async function boot(){
   initPrinter();bindUI();applyTheme();$('billDate').value=dayKey(Date.now());
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
@@ -1269,7 +1276,7 @@ async function startApp(){
   const cfg=sbConfig();
   if(!cfg){showConnect();return}
   if(typeof supabase==='undefined'){gate(`${LOGO()}<p class="lead">โหลดระบบไม่สำเร็จ</p><div class="gerr">ตรวจสอบอินเทอร์เน็ต แล้วลองใหม่</div><button class="btn green block" onclick="location.reload()">ลองใหม่</button>`);return}
-  sb=supabase.createClient(cfg.url,cfg.key,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'pos247-auth'}});
+  sb=supabase.createClient(cfg.url,cfg.key,{db:{schema:SB_SCHEMA},auth:{persistSession:true,autoRefreshToken:true,storageKey:'pos247-auth'}});
   const {data}=await sb.auth.getSession();
   if(!data||!data.session){showShopLogin();return}
   startApp();
