@@ -372,13 +372,15 @@ main{padding-bottom:calc(104px + var(--safeB))}
     <div class="page">
       <div class="h2">บิล<span class="sp"></span><input type="date" id="billDate" class="dateIn"></div>
       <div class="card"><h4>บิลที่พักไว้ (เครื่องนี้)</h4><div id="heldList"></div></div>
-      <div class="card"><h4>บิลขาย (ทุกเครื่อง)<span class="sp"></span><span id="billSum" class="tag"></span></h4><div id="billList"></div></div>
+      <div class="chips adminOnly" id="billStaff" style="padding:0 0 10px"></div>
+      <div class="card"><h4><span id="billTitle">บิลขาย</span><span class="sp"></span><span id="billSum" class="tag"></span></h4><div id="billList"></div></div>
     </div>
   </section>
 
   <section class="view" id="v-report">
     <div class="page">
       <div class="h2">รายงาน<span class="sp"></span><input type="date" id="dashDate" class="dateIn"></div>
+      <div class="chips" id="dashStaff" style="padding:0 0 10px"></div>
       <div class="seg full" id="dashSeg" style="margin-bottom:12px"><button data-dash="DAY" class="on">วัน</button><button data-dash="WEEK">สัปดาห์</button><button data-dash="MONTH">เดือน</button></div>
       <div class="stats">
         <div class="stat big"><small id="dRange">-</small><b class="num" id="dSales">฿0</b><div class="ex" id="dBillsTxt">0 บิล</div></div>
@@ -387,6 +389,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="stat"><small>ส่วนลดรวม</small><b class="num" id="dDisc">฿0</b></div>
         <div class="stat"><small>บิลยกเลิก</small><b class="num" id="dCancel">0</b></div>
       </div>
+      <div class="card" id="dStaffCard"><h4>ยอดขายแยกตามพนักงาน<span class="sp"></span><span class="muted" style="font-size:11.5px;font-weight:600">แตะชื่อเพื่อดูเฉพาะคน</span></h4><div id="dStaff"></div></div>
       <div class="card"><h4>แยกตามการชำระเงิน</h4><div id="dPay"></div></div>
       <div class="card"><h4>สินค้าขายดี</h4><div id="dTop"></div></div>
       <div class="card"><h4>ยอดขายรายวัน</h4><div class="bars" id="dBars"></div></div>
@@ -877,8 +880,15 @@ async function allSales(a,b){
   (await idbAll('outbox')).filter(s=>s.day>=a&&s.day<=b&&!have.has(s.billNo)).forEach(s=>list.push({...s,pending:true}));
   return list;
 }
+const staffKey=s=>s.staffId||('name:'+(s.staff||'-'));
+let BILL_STAFF='',REPORT_STAFF='';
+function staffChips(el,cur){const list=[['','ทุกคน'],...STAFF.map(x=>[x.id,x.name+(x.role==='ADMIN'?' (แอดมิน)':'')])];
+  $(el).innerHTML=list.map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-${el==='billStaff'?'bstaff':'rstaff'}="${esc(v)}">${esc(l)}</button>`).join('')}
 async function renderBills(){
-  const day=$('billDate').value||dayKey(Date.now()),list=(await allSales(day,day)).sort((a,b)=>b.ts-a.ts),ok=list.filter(s=>s.status!=='void');
+  const day=$('billDate').value||dayKey(Date.now());let list=(await allSales(day,day)).sort((a,b)=>b.ts-a.ts);
+  if(!isAdmin())list=list.filter(s=>staffKey(s)===USER.id);else{staffChips('billStaff',BILL_STAFF);if(BILL_STAFF)list=list.filter(s=>staffKey(s)===BILL_STAFF)}
+  $('billTitle').textContent=isAdmin()?(BILL_STAFF?'บิลของ '+((STAFF.find(x=>x.id===BILL_STAFF)||{}).name||''):'บิลขาย (ทุกคน)'):'บิลของฉัน';
+  const ok=list.filter(s=>s.status!=='void');
   $('billSum').textContent=`${ok.length} บิล · ${money0(ok.reduce((a,s)=>a+s.net,0))}`;
   $('billList').innerHTML=list.length?list.map(s=>`<div class="row"><div class="grow"><b>${esc(s.billNo)} ${s.status==='void'?'<span class="tag bad">ยกเลิก</span>':''}${s.pending?'<span class="tag warn">รอส่ง</span>':''}</b>
     <small>${new Date(s.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} · ${esc(s.staff)} · ${esc(s.payment)}${s.note?' · '+esc(s.note):''}</small></div>
@@ -909,7 +919,19 @@ function rangeOf(mode,ds){const d=ds?new Date(ds+'T00:00:00'):new Date();
   const s=new Date(d.getFullYear(),d.getMonth(),1),e=new Date(d.getFullYear(),d.getMonth()+1,0);return[dayKey(s),dayKey(e),s.toLocaleDateString('th-TH',{month:'long',year:'numeric'})]}
 async function renderReport(){
   if(!$('dashDate').value)$('dashDate').value=dayKey(Date.now());
-  const [from,to,label]=rangeOf(DASH_MODE,$('dashDate').value),all=await allSales(from,to),ok=all.filter(s=>s.status!=='void');
+  const [from,to,label0]=rangeOf(DASH_MODE,$('dashDate').value),everything=await allSales(from,to);
+  staffChips('dashStaff',REPORT_STAFF);
+  const okAll=everything.filter(s=>s.status!=='void'),per={};
+  okAll.forEach(s=>{const k=staffKey(s);per[k]=per[k]||{name:s.staff,bills:0,net:0,cash:0,qr:0,other:0};const p=per[k];p.bills++;p.net+=s.net;if(s.payment==='เงินสด')p.cash+=s.net;else if(s.payment==='QR')p.qr+=s.net;else p.other+=s.net});
+  const pl=Object.entries(per).sort((a,b)=>b[1].net-a[1].net),pmax=Math.max(1,...pl.map(x=>x[1].net));
+  $('dStaff').innerHTML=pl.length?pl.map(([k,v])=>{const st=STAFF.find(x=>x.id===k);return `<div class="row" data-rstaff="${esc(k)}" style="cursor:pointer;${REPORT_STAFF&&REPORT_STAFF!==k?'opacity:.45':''}">
+      <span class="avatar" style="width:40px;height:40px;font-size:16px;border-radius:12px">${esc((v.name||'?').charAt(0).toUpperCase())}</span>
+      <div class="grow"><b>${esc(st?st.name:v.name)} ${st&&st.role==='ADMIN'?'<span class="tag warn">แอดมิน</span>':''}</b>
+        <small>${v.bills} บิล · 📱 ${money0(v.qr)} · 💵 ${money0(v.cash)}${v.other?' · อื่นๆ '+money0(v.other):''}</small>
+        <div class="track" style="height:6px;border-radius:6px;background:var(--raise);margin-top:6px;overflow:hidden"><div style="height:100%;width:${Math.max(3,v.net/pmax*100)}%;background:var(--grad);border-radius:6px"></div></div></div>
+      <div class="amt num">${money0(v.net)}</div></div>`}).join(''):'<div class="muted">ยังไม่มีข้อมูล</div>';
+  const all=REPORT_STAFF?everything.filter(s=>staffKey(s)===REPORT_STAFF):everything,ok=all.filter(s=>s.status!=='void');
+  const label=label0+(REPORT_STAFF?' · '+(((STAFF.find(x=>x.id===REPORT_STAFF)||{}).name)||(per[REPORT_STAFF]||{}).name||''):'');
   const sales=ok.reduce((a,s)=>a+s.net,0),cost=ok.reduce((a,s)=>a+s.items.reduce((b,i)=>b+(i.cost||0)*i.qty,0),0);
   $('dRange').textContent='ยอดขาย · '+label+(ONLINE?'':' (ออฟไลน์)');$('dSales').textContent=money(sales);$('dBillsTxt').textContent=ok.length+' บิล';
   $('dAvg').textContent=money(ok.length?sales/ok.length:0);$('dProfit').textContent=money(sales-cost);$('dDisc').textContent=money(ok.reduce((a,s)=>a+s.discount,0));$('dCancel').textContent=all.length-ok.length;
@@ -1223,6 +1245,8 @@ function bindUI(){
     const dec=t.closest('[data-dec]');if(dec){changeQty(dec.dataset.dec,-1);return}
     const nv=t.closest('#nav [data-view]');if(nv){setView(nv.dataset.view);return}
     const dm=t.closest('[data-disc]');if(dm){setDisc(dm.dataset.disc);return}
+    const bs=t.closest('[data-bstaff]');if(bs){BILL_STAFF=bs.dataset.bstaff;renderBills();return}
+    const rsf=t.closest('[data-rstaff]');if(rsf){const k=rsf.dataset.rstaff;REPORT_STAFF=(REPORT_STAFF===k&&k)?'':k;renderReport();return}
     const ds=t.closest('[data-dash]');if(ds){DASH_MODE=ds.dataset.dash;document.querySelectorAll('#dashSeg button').forEach(b=>b.classList.toggle('on',b===ds));renderReport();return}
     const th=t.closest('#themeSeg [data-theme]');if(th){DEV.theme=th.dataset.theme;saveDev();applyTheme();return}
     const pm=t.closest('[data-pmode]');if(pm){setMode(pm.dataset.pmode);return}
