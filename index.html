@@ -152,7 +152,9 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .citem .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:4px}
 .citem .nm{flex:1;min-width:0}
 .citem .nm b{display:block;font-size:14px;font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.citem .nm small{font-size:12px;color:var(--sub)}
+.citem .nm small{font-size:12px;color:var(--sub)}.citem .nm small s{opacity:.6}
+.ldisc{display:block;margin-top:4px;height:24px;padding:0 9px;border-radius:999px;border:1px dashed var(--line2);background:transparent;color:var(--sub);font:inherit;font-size:12px;cursor:pointer}
+.ldisc.on{border-style:solid;border-color:transparent;background:var(--dangerSoft);color:var(--danger);font-weight:600}
 .citem .lt{font-weight:700;font-size:14px;min-width:58px;text-align:right}
 .step{display:flex;align-items:center;background:var(--raise);border-radius:13px;padding:2px}
 .step button{width:32px;height:32px;border-radius:11px;font-size:18px;font-weight:600}
@@ -372,7 +374,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
         </div>
         <div class="clist" id="clist"></div>
         <div class="cfoot">
-          <div class="disc"><span>ส่วนลด</span>
+          <div class="disc" hidden><span>ส่วนลด</span>
             <input id="discVal" type="number" inputmode="decimal" min="0" placeholder="0">
             <div class="seg" id="discSeg"><button data-disc="BAHT" class="on">฿</button><button data-disc="PERCENT">%</button></div></div>
           <input class="note" id="note" placeholder="หมายเหตุ / โต๊ะ / ชื่อลูกค้า (ถ้ามี)" maxlength="200">
@@ -841,8 +843,9 @@ function add(id){const p=prodById(id);if(!p)return;if(qtyOf(id)>=Number(p.stock|
   const c=CART.find(x=>x.id===id);if(c)c.qty++;else CART.push({id,name:p.name,price:Number(p.price||0),qty:1});updateCard(id);renderCart()}
 function changeQty(id,d){const c=CART.find(x=>x.id===id),p=prodById(id);if(!c)return;c.qty+=d;
   if(c.qty<=0)CART=CART.filter(x=>x.id!==id);else if(p&&c.qty>Number(p.stock)){c.qty=Number(p.stock);toast('ถึงจำนวนสต๊อกสูงสุดแล้ว','warn')}updateCard(id);renderCart()}
-function totals(){const sub=CART.reduce((a,x)=>a+x.qty*x.price,0),v=Math.max(0,Number($('discVal').value)||0);
-  let d=DISC_MODE==='PERCENT'?sub*Math.min(v,100)/100:v;d=Math.round(Math.min(d,sub)*100)/100;return{subtotal:sub,discount:d,net:Math.max(0,sub-d),count:CART.reduce((a,x)=>a+x.qty,0)}}
+const dpu=x=>Math.min(Number(x.price)||0,Math.max(0,Number(x.dpu)||0)),lineTotal=x=>Math.round((x.price-dpu(x))*x.qty*100)/100;
+function totals(){const sub=CART.reduce((a,x)=>a+x.qty*x.price,0);
+  let d=CART.reduce((a,x)=>a+dpu(x)*x.qty,0);d=Math.round(Math.min(d,sub)*100)/100;return{subtotal:sub,discount:d,net:Math.max(0,sub-d),count:CART.reduce((a,x)=>a+x.qty,0)}}
 function renderNoteNames(){const el=$('noteNames');if(!el)return;const cur=$('note').value.trim(),ns=isAdmin()?(shop().noteNames||[]):[];
   el.innerHTML=ns.map(n=>`<button type="button" data-nn="${esc(n)}" class="${noteHas(cur,n)?'on':''}">${esc(n)}</button>`).join('')}
 const noteNameOk=()=>{if(!isAdmin())return true;const ns=shop().noteNames||[];return !ns.length||ns.some(n=>noteHas($('note').value.trim(),n))};
@@ -853,14 +856,23 @@ function pickNoteName(n){const ns=shop().noteNames||[],had=noteHas($('note').val
 function renderCart(){renderNoteNames();
   const t=totals();
   $('clist').innerHTML=CART.length?CART.map(x=>{const p=prodById(x.id)||{};return `<div class="citem"><div class="th">${p.image?`<img src="${esc(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}</div>
-      <div class="nm"><b>${esc(x.name)}</b><small class="num">${money0(x.price)} / ชิ้น</small></div>
-      <div class="step"><button data-dec="${esc(x.id)}">−</button><span class="num">${x.qty}</span><button data-inc="${esc(x.id)}">+</button></div><div class="lt num">${money0(x.price*x.qty)}</div></div>`}).join('')
+      <div class="nm"><b>${esc(x.name)}</b><small class="num">${dpu(x)?`<s>${money0(x.price)}</s> ${money0(x.price-dpu(x))}`:money0(x.price)} / ชิ้น</small>
+        <button class="ldisc ${dpu(x)?'on':''}" data-ldisc="${esc(x.id)}">${dpu(x)?'ลด '+money0(dpu(x))+'/ชิ้น':'＋ ส่วนลด'}</button></div>
+      <div class="step"><button data-dec="${esc(x.id)}">−</button><span class="num">${x.qty}</span><button data-inc="${esc(x.id)}">+</button></div><div class="lt num">${money0(lineTotal(x))}</div></div>`}).join('')
     :'<div class="empty" style="padding:34px 10px"><b>🧾</b>ยังไม่มีสินค้า<br><small>แตะสินค้าเพื่อเพิ่มลงบิล</small></div>';
   $('cCount').textContent=t.count+' ชิ้น';$('sSub').textContent=money(t.subtotal);$('sDisc').textContent='-'+money(t.discount);$('sNet').textContent=money(t.net);
   $('payBtn').disabled=BUSY||!CART.length;$('payBtn').textContent=CART.length?'ชำระเงิน · '+money(t.net):'ชำระเงิน';
   $('cbCount').textContent=t.count;$('cbTotal').textContent=money(t.net);
   $('cartbar').classList.toggle('on',CART.length>0&&VIEW==='sell'&&!$('cart').classList.contains('open'));
 }
+async function lineDiscount(id){const x=CART.find(c=>c.id===id);if(!x)return;
+  const v=await form('ส่วนลด · '+esc(x.name),`<p class="muted" style="margin:0 0 10px">ราคา ${money0(x.price)} / ชิ้น · ${x.qty} ชิ้น</p>
+    <div class="field"><label>ลดต่อชิ้น</label><div style="display:flex;gap:8px"><input id="fD" type="number" inputmode="decimal" min="0" step="any" value="${dpu(x)||''}" placeholder="0" style="flex:1">
+    <div class="seg" id="fDm"><button type="button" data-m="B" class="on">฿</button><button type="button" data-m="P">%</button></div></div><small>ใส่ 0 หรือเว้นว่าง = ไม่ลด</small></div>`,'ใช้ส่วนลด',
+    el=>{const n=Math.max(0,Number(el.querySelector('#fD').value)||0),pc=el.querySelector('#fDm .on').dataset.m==='P';const d=pc?x.price*Math.min(n,100)/100:n;
+      if(d>x.price)return 'ส่วนลดมากกว่าราคาสินค้า';return{d:Math.round(d*100)/100}},
+    (a)=>a.el.querySelector('#fDm').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(!b)return;a.el.querySelectorAll('#fDm button').forEach(z=>z.classList.toggle('on',z===b))}));
+  if(!v)return;x.dpu=v.d;renderCart()}
 function openCart(){$('cart').classList.add('open');$('scrim').classList.add('on');renderCart()}
 function closeCart(){$('cart').classList.remove('open');$('scrim').classList.remove('on');renderCart()}
 function setDisc(m){DISC_MODE=m;document.querySelectorAll('#discSeg button').forEach(b=>b.classList.toggle('on',b.dataset.disc===m));renderCart()}
@@ -952,7 +964,7 @@ async function checkout(){
   BUSY=true;
   try{const now=Date.now();
     const s={billNo:nextBillNo(),ts:now,day:dayKey(now),staff:USER.name,staffId:USER.id,shiftId:SHIFT&&SHIFT.id,device:DEV.code,
-      items:CART.map(c=>({id:c.id,name:c.name,qty:c.qty,price:c.price,cost:Number(prodById(c.id).cost||0),total:c.price*c.qty})),
+      items:CART.map(c=>({id:c.id,name:c.name,qty:c.qty,price:c.price,cost:Number(prodById(c.id).cost||0),...(dpu(c)?{discount:Math.round(dpu(c)*c.qty*100)/100}:{}),total:lineTotal(c)})),
       subtotal:t.subtotal,discount:t.discount,net:t.net,payment,paid,change:Math.max(0,paid-t.net),note:$('note').value.trim(),status:'ok'};
     await idbPut('outbox',s);
     CART.forEach(c=>{const p=prodById(c.id);p.stock=Number(p.stock)-c.qty});cacheSave();
@@ -1281,7 +1293,7 @@ async function exportSalesCSV(){
 }
 
 /* ======================= RECEIPT ======================= */
-function preBill(){const t=totals();return{pre:true,billNo:'-',datetime:fmtTime(Date.now()),staff:USER?USER.name:'-',items:CART.map(c=>({name:c.name,qty:c.qty,price:c.price,total:c.price*c.qty})),subtotal:t.subtotal,discount:t.discount,net:t.net,payment:'QR',paid:t.net,change:0,note:$('note').value.trim()}}
+function preBill(){const t=totals();return{pre:true,billNo:'-',datetime:fmtTime(Date.now()),staff:USER?USER.name:'-',items:CART.map(c=>({name:c.name,qty:c.qty,price:c.price,...(dpu(c)?{discount:Math.round(dpu(c)*c.qty*100)/100}:{}),total:lineTotal(c)})),subtotal:t.subtotal,discount:t.discount,net:t.net,payment:'QR',paid:t.net,change:0,note:$('note').value.trim()}}
 const showQR=r=>r.payment==='QR'&&ppReady()&&Number(r.net)>0;
 const receiptOf=s=>({billNo:s.billNo,datetime:fmtTime(s.ts),staff:s.staff,items:s.items,subtotal:s.subtotal,discount:s.discount,net:s.net,payment:s.payment,paid:s.paid,change:s.change,note:s.note});
 const rcShop=()=>shop().shop||'POS',rcHead=()=>String(shop().head||'').split('\n').map(x=>x.trim()).filter(Boolean),rcFoot=()=>shop().foot||'ขอบคุณค่ะ/ครับ';
@@ -1294,7 +1306,7 @@ const itemCount=r=>(r.items||[]).reduce((n,i)=>n+(Number(i.qty)||0),0);
 function receiptHtml(r){const pp=shop().promptpay;return `<div class="c bold" style="font-size:1.35em">${esc(rcShop())}</div>${rcHead().map(l=>`<div class="c">${esc(l)}</div>`).join('')}
   <div class="c bold" style="margin-top:4px">${r.pre?'ใบแจ้งยอด (ยังไม่ชำระ)':'ใบเสร็จรับเงิน'}</div><div class="c">${esc(r.datetime)}</div><hr>${r.pre?'':`<div>บิล: ${esc(r.billNo)}</div>`}<div>พนักงาน: ${esc(r.staff)}</div><hr>
   <div class="lr bold"><span>สินค้า</span><span>จำนวน</span></div>
-  ${(r.items||[]).map(i=>`<div class="lr bold"><span>${esc(i.name)}</span><span style="white-space:nowrap">x ${i.qty}</span></div><div class="lr"><span>&nbsp;&nbsp;@${money0(unitOf(i))}</span><span>${money(i.total)}</span></div>`).join('')}
+  ${(r.items||[]).map(i=>`<div class="lr bold"><span>${esc(i.name)}</span><span style="white-space:nowrap">x ${i.qty}</span></div><div class="lr"><span>&nbsp;&nbsp;@${money0(unitOf(i))}${Number(i.discount)?` · ลด -${money0(i.discount)}`:''}</span><span>${money(i.total)}</span></div>`).join('')}
   <hr><div class="lr bold"><span>รวม ${(r.items||[]).length} รายการ</span><span>${itemCount(r)} ชิ้น</span></div><hr>
   <div class="lr"><span>รวม</span><span>${money(r.subtotal)}</span></div>${Number(r.discount)?`<div class="lr"><span>ส่วนลด</span><span>-${money(r.discount)}</span></div>`:''}
   <div class="lr bold" style="font-size:1.2em"><span>${r.pre?'ยอดที่ต้องชำระ':'สุทธิ'}</span><span>${money(r.net)}</span></div>${r.pre?'':`<div class="lr"><span>ชำระ</span><span>${esc(r.payment)}</span></div>`}
@@ -1453,6 +1465,7 @@ function bindUI(){
     const mi=t.closest('[data-minus]');if(mi){e.preventDefault();e.stopPropagation();changeQty(mi.dataset.minus,-1);return}
     const ad=t.closest('[data-add]');if(ad){add(ad.dataset.add);return}
     const ca=t.closest('[data-cat]');if(ca){CAT=ca.dataset.cat;renderChips();renderGrid();return}
+    const ld=t.closest('[data-ldisc]');if(ld){lineDiscount(ld.dataset.ldisc);return}
     const inc=t.closest('[data-inc]');if(inc){changeQty(inc.dataset.inc,1);return}
     const dec=t.closest('[data-dec]');if(dec){changeQty(dec.dataset.dec,-1);return}
     const nv=t.closest('#nav [data-view]');if(nv){setView(nv.dataset.view);return}
