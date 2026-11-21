@@ -319,6 +319,11 @@ main{padding-bottom:calc(104px + var(--safeB))}
 @keyframes sp{to{transform:rotate(360deg)}}
 .demo{padding:5px;text-align:center;font-size:12px;font-weight:700;background:var(--warnSoft);color:var(--warn)}
 @media(max-width:440px){#themeBtn{display:none}}
+.toTop{position:fixed;right:16px;bottom:calc(170px + var(--safeB));z-index:42;width:46px;height:46px;border-radius:50%;border:1px solid var(--line2);background:var(--glass);backdrop-filter:blur(14px);color:var(--ink);display:grid;place-items:center;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .2s,transform .2s}
+.toTop svg{width:22px;height:22px}.toTop.on{opacity:1;transform:none;pointer-events:auto}
+@media(min-width:1000px){.toTop{bottom:calc(100px + var(--safeB))}}
+.imgPick{display:flex;gap:12px;align-items:center}.imgPick .pv{width:84px;height:84px;border-radius:16px;background:var(--photo);border:1px solid var(--line);object-fit:contain;padding:4px;flex:0 0 auto}
+.imgPick .pv.empty{display:grid;place-items:center;color:var(--mute);font-size:28px;padding:0}
 </style>
 </head>
 <body>
@@ -337,6 +342,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
 </header>
 
 <main>
+  <button class="toTop" id="toTop" aria-label="กลับขึ้นบนสุด" onclick="window.scrollTo({top:0,behavior:'smooth'})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg></button>
   <section class="view on" id="v-sell">
     <div class="sellLayout">
       <div>
@@ -522,6 +528,7 @@ const LocalAPI={
   async upsertProducts(l){const m=new Map(local.get('products',[]).map(p=>[p.id,p]));l.forEach(p=>m.set(p.id,p));local.set('products',[...m.values()])},
   async replaceProducts(l){local.set('products',l)},
   async deleteProduct(id){local.set('products',local.get('products',[]).filter(p=>p.id!==id))},
+  async uploadImage(blob){return new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(blob)})},
   async upsertStaff(s){const l=local.get('staff',[]),i=l.findIndex(x=>x.id===s.id);if(i>-1)l[i]=s;else l.push(s);local.set('staff',l)},
   async deleteStaff(id){local.set('staff',local.get('staff',[]).filter(x=>x.id!==id))},
   async saveShop(d){local.set('shop',d)},
@@ -559,11 +566,14 @@ const db2shift=r=>r?{id:r.id,openedAt:Date.parse(r.opened_at),by:r.opened_by,ope
 const CloudAPI={
   kind:'cloud',
   async loadAll(){
-    const [p,s,st,sh]=await Promise.all([sb.from('products').select('*'),sb.from('staff').select('*'),sb.from('settings').select('data').eq('id',1).maybeSingle(),sb.from('shifts').select('*').is('closed_at',null).maybeSingle()]);
+    const [p,s,st,sh]=await Promise.all([sb.from('products').select('*'),sb.from('staff').select('id,name,role,pin_hash,active,username,user_id'),sb.from('settings').select('data').eq('id',1).maybeSingle(),sb.from('shifts').select('*').is('closed_at',null).maybeSingle()]);
     return{products:chk(p).map(db2p),staff:chk(s).map(db2s),shop:(chk(st)||{}).data||{},shift:db2shift(chk(sh))}},
   async upsertProducts(l){for(let i=0;i<l.length;i+=500)chk(await sb.from('products').upsert(l.slice(i,i+500).map(p2db)))},
   async replaceProducts(l){chk(await sb.from('products').delete().neq('id','\u0000'));await CloudAPI.upsertProducts(l)},
   async deleteProduct(id){chk(await sb.from('products').delete().eq('id',id))},
+  async uploadImage(blob){const path=`p/${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}.jpg`;
+    const {error}=await sb.storage.from('pos-products').upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000'});if(error)throw error;
+    return sb.storage.from('pos-products').getPublicUrl(path).data.publicUrl},
   async upsertStaff(s){chk(await sb.from('staff').upsert(s2db(s)))},
   async createStaffLogin(u,name,role,pin){return chk(await sb.rpc('create_staff_login',{p_username:u,p_name:name,p_role:role,p_pin:pin}))},
   async setStaffPin(id,pin){return chk(await sb.rpc('set_staff_pin',{p_staff:id,p_pin:pin}))},
@@ -994,6 +1004,11 @@ function adminProducts(){
           [l[i],l[j]]=[l[j],l[i]];l.forEach((p,k)=>p.order=k+1);a.redraw();renderGrid();try{await API.upsertProducts([l[i],l[j]])}catch(err){toast(errMsg(err),'err')}}})}});
   PROD_MODAL.onClose=()=>{PROD_MODAL=null};
 }
+async function shrinkImage(file,max=520){
+  const bmp=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('เปิดไฟล์รูปไม่ได้'));i.src=URL.createObjectURL(file)});
+  const k=Math.min(1,max/Math.max(bmp.naturalWidth,bmp.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(bmp.naturalWidth*k);c.height=Math.round(bmp.naturalHeight*k);
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(bmp,0,0,c.width,c.height);URL.revokeObjectURL(bmp.src);
+  return new Promise(r=>c.toBlob(r,'image/jpeg',.82))}
 async function editProduct(id){
   const p=id?prodById(id):{active:true,stock:0,low:0};if(!p)return;
   const f=(k,l,v,t='text',cls='')=>`<div class="field ${cls}"><label>${l}</label><input id="fp-${k}" type="${t}" ${t==='number'?'inputmode="decimal" step="any"':''} value="${esc(v??'')}"></div>`;
@@ -1001,11 +1016,18 @@ async function editProduct(id){
       <div class="field"><label>หมวดหมู่</label><input id="fp-category" list="catList" value="${esc(p.category||'')}"><datalist id="catList">${cats().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
       ${f('price','ราคาขาย',p.price??'','number')}${f('cost','ต้นทุน',p.cost??'','number')}${f('stock','คงเหลือ',p.stock??0,'number')}${f('low','แจ้งเตือนเมื่อเหลือ',p.low??0,'number')}
       <div class="field"><label>สถานะ</label><select id="fp-active"><option value="1" ${p.active!==false?'selected':''}>เปิดขาย</option><option value="0" ${p.active===false?'selected':''}>ปิดขาย</option></select></div>
-      ${f('image','ลิงก์รูปสินค้า (URL / Google Drive)',p.image,'text','full')}</div>${id?'<button class="btn red block" data-del type="button">ลบสินค้านี้</button>':''}`,
+      <div class="field full"><label>รูปสินค้า</label><div class="imgPick">${p.image?`<img class="pv" id="fp-pv" src="${esc(p.image)}" referrerpolicy="no-referrer" alt="">`:'<span class="pv empty" id="fp-pv">📷</span>'}
+        <div class="grow" style="display:flex;flex-direction:column;gap:8px"><button class="btn" type="button" id="fp-pick">📷 ถ่ายรูป / เลือกรูป</button>${p.image?'<button class="mini" type="button" id="fp-clear" style="align-self:flex-start">ลบรูป</button>':''}</div>
+        <input type="file" id="fp-file" accept="image/*" hidden></div></div>
+      ${f('image','หรือวางลิงก์รูป (URL / Google Drive)',p.image,'text','full')}</div>${id?'<button class="btn red block" data-del type="button">ลบสินค้านี้</button>':''}`,
     'บันทึก',el=>{const g=k=>el.querySelector('#fp-'+k).value.trim();
       const d={id:g('id')||('P'+uid()),name:g('name'),category:g('category'),price:Number(g('price')||0),cost:Number(g('cost')||0),stock:Number(g('stock')||0),low:Number(g('low')||0),active:g('active')==='1',image:driveImg(g('image')),order:p.order||PRODUCTS.length+1};
       if(!d.name)return 'กรุณากรอกชื่อสินค้า';if(PRODUCTS.some(x=>x.id===d.id&&x.id!==id))return 'รหัสสินค้านี้มีอยู่แล้ว';return d},
-    (a,finish)=>{const b=a.el.querySelector('[data-del]');if(b)b.onclick=async()=>{if(await ask('ลบสินค้า?',p.name+' (บิลเก่าไม่หาย)','ลบ',true))finish({_del:true})}});
+    (a,finish)=>{const q=k=>a.el.querySelector('#fp-'+k),setPv=u=>{const o=q('pv'),n=document.createElement(u?'img':'span');n.id='fp-pv';n.className='pv'+(u?'':' empty');if(u){n.src=u;n.referrerPolicy='no-referrer'}else n.textContent='📷';o.replaceWith(n)};
+      q('pick').onclick=()=>q('file').click();if(q('clear'))q('clear').onclick=()=>{q('image').value='';setPv('')};
+      q('file').onchange=async e=>{const file=e.target.files[0];e.target.value='';if(!file)return;
+        try{const url=await guard(async()=>API.uploadImage(await shrinkImage(file)),'กำลังอัปโหลดรูป...');q('image').value=url;setPv(url);toast('ใส่รูปแล้ว กดบันทึกเพื่อเก็บ','ok')}catch(err){}};
+      const b=a.el.querySelector('[data-del]');if(b)b.onclick=async()=>{if(await ask('ลบสินค้า?',p.name+' (บิลเก่าไม่หาย)','ลบ',true))finish({_del:true})}});
   if(!v)return;
   try{
     if(v._del){await guard(()=>API.deleteProduct(id),'กำลังลบ...');PRODUCTS=PRODUCTS.filter(x=>x.id!==id);CART=CART.filter(c=>c.id!==id);toast('ลบสินค้าแล้ว','ok')}
@@ -1030,7 +1052,7 @@ function adminStaff(){
 async function editStaff(id){
   const cloud=API.kind==='cloud';
   const s=id?STAFF.find(x=>x.id===id):{role:'CASHIER',active:true,userId:cloud?'new':null};if(!s)return;
-  const login=!!s.userId; // พนักงานแบบยูส + PIN 6 หลัก
+  const login=!!(s.userId||s.username); // พนักงานแบบยูส + PIN 6 หลัก
   const v=await form(id?'แก้ไขพนักงาน':'เพิ่มพนักงาน',`<div class="field"><label>ชื่อพนักงาน</label><input id="fs-name" value="${esc(s.name||'')}" placeholder="เช่น สมชาย"></div>
     ${login?`<div class="field"><label>ยูส (ใช้เข้าระบบ)</label><input id="fs-user" value="${esc(s.username||'')}" ${id?'disabled':''} autocapitalize="none" spellcheck="false" placeholder="เช่น slay11"><small>${id?'เปลี่ยนยูสไม่ได้':'a-z 0-9 . _ - อย่างน้อย 3 ตัว'}</small></div>`:''}
     <div class="fgrid"><div class="field"><label>สิทธิ์</label><select id="fs-role"><option value="CASHIER" ${s.role!=='ADMIN'?'selected':''}>แคชเชียร์ · ขาย</option><option value="ADMIN" ${s.role==='ADMIN'?'selected':''}>แอดมิน · จัดการ</option></select></div>
@@ -1368,16 +1390,20 @@ async function startApp(){
   if(!DEMO&&navigator.onLine){try{const {data:u}=await sb.auth.getUser();const r=await sb.from('members').select('user_id').eq('user_id',u.user.id).maybeSingle();
     if(!r.error&&!r.data){loading(false);gate(`${LOGO()}<p class="lead">บัญชีนี้ยังไม่ได้เปิดสิทธิ์ใช้ POS</p><div class="muted" style="text-align:center;margin-bottom:14px">${esc(u.user.email||'')}<br>ให้ผู้ดูแลเพิ่มบัญชีนี้ในตาราง pos.members</div><button class="btn block" id="nmOut">ออกจากระบบ</button>`);$('nmOut').onclick=async()=>{await sb.auth.signOut();location.reload()};return}}catch(e){}}
   try{applyData(await API.loadAll());setOnline(true)}
-  catch(e){const c=local.get('cache',null);if(c){applyData(c);setOnline(false);toast('ออฟไลน์ — ใช้ข้อมูลล่าสุดในเครื่อง','warn')}else{loading(false);gate(`${LOGO()}<p class="lead">โหลดข้อมูลไม่ได้</p><div class="gerr">${esc(errMsg(e))}</div><button class="btn green block" onclick="location.reload()">ลองใหม่</button>`);return}}
+  catch(e){console.warn('loadAll failed',e);const c=local.get('cache',null);if(c){applyData(c);setOnline(false);toast('ออฟไลน์ — ใช้ข้อมูลล่าสุดในเครื่อง','warn')}else{loading(false);gate(`${LOGO()}<p class="lead">โหลดข้อมูลไม่ได้</p><div class="gerr">${esc(errMsg(e))}</div><button class="btn green block" onclick="location.reload()">ลองใหม่</button>`);return}}
   loading(false);
   renderAll();
   API.subscribe(queueRefresh);
-  const me=AUTH_UID&&STAFF.find(x=>x.userId===AUTH_UID);
+  let me=AUTH_UID&&STAFF.find(x=>x.userId===AUTH_UID);
+  if(!me&&!DEMO&&AUTH_UID){try{const {data:ss}=await sb.auth.getSession();const em=(ss&&ss.session&&ss.session.user.email)||'';
+    if(em.endsWith(STAFF_DOMAIN)){const un=em.slice(0,-STAFF_DOMAIN.length);me=STAFF.find(x=>(x.username||'').toLowerCase()===un);
+      if(!me){console.warn('staff login: no staff row for',un,STAFF);signOutDevice(`ยูส ${un} ยังไม่ผูกกับพนักงานในระบบ ให้แอดมินตรวจสอบ`);return}}}catch(e){console.warn(e)}}
   if(me){if(me.active)loginAs(me);else signOutDevice('บัญชีนี้ถูกปิดใช้งาน')}
   else{const sid=sessionStorage.getItem(KP+'p3:user'),s=STAFF.find(x=>x.id===sid&&x.active&&!x.userId);
   if(s)loginAs(s);else if(!STAFF.length)showSetup();else showLock()}
   syncNow();
 }
+addEventListener('scroll',()=>{const b=$('toTop');if(b)b.classList.toggle('on',scrollY>300&&VIEW==='sell')},{passive:true});
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 (async function boot(){
   initPrinter();bindUI();applyTheme();$('billDate').value=dayKey(Date.now());

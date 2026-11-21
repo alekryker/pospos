@@ -313,3 +313,12 @@ begin
 end $$;
 revoke execute on function pos.delete_staff(text) from public, anon;
 grant execute on function pos.delete_staff(text) to authenticated;
+
+-- ===== รูปสินค้า: เก็บใน Storage bucket pos-products (อ่านได้สาธารณะ เขียนได้เฉพาะสมาชิก POS) =====
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('pos-products', 'pos-products', true, 2097152, array['image/jpeg', 'image/png', 'image/webp'])
+on conflict (id) do nothing;
+drop policy if exists "pos products upload" on storage.objects;
+create policy "pos products upload" on storage.objects for insert to authenticated
+  with check (bucket_id = 'pos-products' and pos.is_member());
+notify pgrst, 'reload schema';
