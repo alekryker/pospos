@@ -437,12 +437,12 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="switch" style="margin-top:6px"><div><b>พิมพ์อัตโนมัติหลังขาย</b><small>เมื่อเชื่อมเครื่องพิมพ์แล้ว</small></div><label class="tg"><input type="checkbox" id="pAuto"><span></span></label></div>
         <div class="field" style="margin:8px 0 0"><label>ขนาดกระดาษ</label><div class="seg full" id="paperSeg"><button data-paper="58">58 มม.</button><button data-paper="80">80 มม.</button></div></div>
       </div>
-      <div class="card adminOnly hidden" id="slipCard" style="display:none">
-        <h4>ใบรายการสินค้าจากพนักงาน (Bluetooth)</h4>
-        <p class="muted" style="font-size:13px;margin:0 0 10px">เมื่อพนักงานขายจากเครื่องไหนก็ได้ ใบรายการสินค้าจะพิมพ์ออกเครื่องพิมพ์บลูทูธตัวนี้อัตโนมัติ — เปิดแอปเครื่องนี้ค้างไว้</p>
+      <div class="card adminOnly" id="slipCard">
+        <h4>ใบเสร็จบิลพนักงาน (Bluetooth)</h4>
+        <p class="muted" style="font-size:13px;margin:0 0 10px">เมื่อพนักงานขายจากเครื่องไหนก็ได้ ใบเสร็จจะพิมพ์ออกเครื่องพิมพ์บลูทูธตัวนี้อัตโนมัติ — เปิดแอปเครื่องนี้ค้างไว้</p>
         <div id="slipStatus" style="margin:0 0 8px;font-size:13.5px"></div>
         <div class="btns"><button class="btn green" data-act="slipConnect" id="slipBtn">เชื่อมบลูทูธ</button><button class="btn" data-act="slipTest">ทดสอบพิมพ์</button></div>
-        <div class="switch" style="margin-top:6px"><div><b>รับพิมพ์ใบรายการของพนักงาน</b><small>ที่เครื่องนี้</small></div><label class="tg"><input type="checkbox" id="slipOn"><span></span></label></div>
+        <div class="switch" style="margin-top:6px"><div><b>รับพิมพ์ใบเสร็จบิลพนักงาน</b><small>ที่เครื่องนี้</small></div><label class="tg"><input type="checkbox" id="slipOn"><span></span></label></div>
         <div class="field" style="margin:8px 0 0"><label>ขนาดกระดาษเครื่องบลูทูธ</label><div class="seg full" id="slipPaperSeg"><button data-slippaper="58">58 มม.</button><button data-slippaper="80">80 มม.</button></div></div>
       </div>
       <div class="card adminOnly">
@@ -1316,9 +1316,9 @@ function receiptHtml(r){const pp=shop().promptpay;return `<div class="c bold" st
 const testReceipt=()=>({billNo:'TEST',datetime:fmtTime(Date.now()),staff:USER?USER.name:'-',items:[{name:'ทดสอบภาษาไทย สินค้าตัวอย่าง',qty:2,price:60,total:120},{name:'Test item ABC',qty:1,price:45,total:45}],subtotal:165,discount:5,net:160,payment:'เงินสด',paid:200,change:40,note:'พิมพ์ทดสอบ'});
 function segWords(t){t=String(t??'');if(window.Intl&&Intl.Segmenter){try{return Array.from(new Intl.Segmenter('th',{granularity:'word'}).segment(t),s=>s.segment)}catch(e){}}return Array.from(t)}
 function wrapText(ctx,text,maxW){const L=[];let cur='';for(const w of segWords(text)){if(ctx.measureText(cur+w).width<=maxW||!cur)cur+=w;else{L.push(cur.trimEnd());cur=w.trimStart()}}if(cur)L.push(cur);return L.length?L:['']}
-async function receiptCanvas(r){
+async function receiptCanvas(r,paper=DEV.paper){
   try{await Promise.all([document.fonts.load('22px "Anuphan"'),document.fonts.load('bold 22px "Anuphan"')])}catch(e){}
-  const W=Number(DEV.paper)===58?384:576,M=W===384?8:20,F=W===384?22:24,c=document.createElement('canvas');c.width=W;c.height=4000;
+  const W=Number(paper)===58?384:576,M=W===384?8:20,F=W===384?22:24,c=document.createElement('canvas');c.width=W;c.height=4000;
   const x=c.getContext('2d',{alpha:false,willReadFrequently:true});x.fillStyle='#fff';x.fillRect(0,0,W,c.height);x.fillStyle='#000';x.textBaseline='top';
   let y=10;const font=(s=F,b=false)=>x.font=`${b?'bold ':''}${s}px "Anuphan", sans-serif`;
   const center=(t,s=F,b=false)=>{font(s,b);x.textAlign='center';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,W/2,y);y+=s+8})};
@@ -1431,25 +1431,24 @@ async function slipCanvas(s,paper=DEV.slipPaper){
   let n=0;(s.items||[]).forEach(i=>{n+=Number(i.qty)||0;lr(i.name,'x '+i.qty,F+4,true)});rule();
   lr('รวม',n+' ชิ้น',F+2,true);y+=20;
   const out=document.createElement('canvas');out.width=W;out.height=Math.ceil(y);const o=out.getContext('2d',{alpha:false,willReadFrequently:true});o.fillStyle='#fff';o.fillRect(0,0,W,out.height);o.drawImage(c,0,0);return out}
-async function slipPrint(s){const c=await slipCanvas(s),parts=[new Uint8Array([0x1B,0x40])];for(let y=0;y<c.height;y+=128)parts.push(canvasRasterChunk(c,y,Math.min(128,c.height-y)));
+async function slipPrint(s){const c=s.billNo==='TEST'&&!s.items[0].price?await slipCanvas(s):await receiptCanvas({...receiptOf(s),noQR:true},DEV.slipPaper),parts=[new Uint8Array([0x1B,0x40])];for(let y=0;y<c.height;y+=128)parts.push(canvasRasterChunk(c,y,Math.min(128,c.height-y)));
   parts.push(new Uint8Array([0x1B,0x64,0x04,0x1D,0x56,0x42,0x00]));for(const p of parts)await slipWrite(p)}
-const testSlip=()=>({billNo:'TEST',ts:Date.now(),staff:'พนักงานทดสอบ',note:'โต๊ะ 3',items:[{name:'เบียร์ช้าง ขวดใหญ่',qty:2},{name:'น้ำแข็งถัง',qty:1}]});
+const testSlip=()=>({billNo:'TEST',ts:Date.now(),staff:'พนักงานทดสอบ',note:'โต๊ะ 3',items:[{name:'เบียร์ช้าง ขวดใหญ่',qty:2,price:85,total:170},{name:'น้ำแข็งถัง',qty:1,price:40,total:40}],subtotal:210,discount:0,net:210,payment:'เงินสด',paid:210,change:0});
 async function slipPump(){
-  return; // ปิดใช้งานใบรายการสินค้าจากพนักงาน
   if(SLIP_BUSY||!DEV.slipOn||!USER||!isAdmin()||!(SLIP.connected||SLIP.device))return;
   const ids=STAFF.filter(x=>x.role!=='ADMIN').map(x=>x.id);if(!ids.length)return;
   SLIP_BUSY=true;let printed=0;
   try{const since=Math.max(Number(DEV.slipSince)||Date.now(),Date.now()-3*3600e3);
     for(const s of await API.pendingSlips(since,ids)){
       if(!await API.claimSlip(s.billNo,true))continue;
-      try{await slipPrint(s);printed++}catch(e){await API.claimSlip(s.billNo,false).catch(()=>{});toast('พิมพ์ใบรายการไม่สำเร็จ: '+errMsg(e),'err');break}}}
+      try{await slipPrint(s);printed++}catch(e){await API.claimSlip(s.billNo,false).catch(()=>{});toast('พิมพ์ใบเสร็จบิลพนักงานไม่สำเร็จ: '+errMsg(e),'err');break}}}
   catch(e){console.warn('slipPump',e)}finally{SLIP_BUSY=false}
-  if(printed)toast(`พิมพ์ใบรายการพนักงาน ${printed} บิล`,'ok')}
+  if(printed)toast(`พิมพ์ใบเสร็จบิลพนักงาน ${printed} บิล`,'ok')}
 async function keepAwake(){try{if(DEV.slipOn&&navigator.wakeLock&&!SLIP_LOCK&&document.visibilityState==='visible'){SLIP_LOCK=await navigator.wakeLock.request('screen');SLIP_LOCK.addEventListener('release',()=>{SLIP_LOCK=null})}}catch(e){}}
 function updateSlipUI(){const st=$('slipStatus');if(!st)return;document.querySelectorAll('#slipPaperSeg button').forEach(b=>b.classList.toggle('on',Number(b.dataset.slippaper)===(Number(DEV.slipPaper)===80?80:58)));$('slipOn').checked=!!DEV.slipOn;
   st.innerHTML=(SLIP.connected?`<span class="tag ok">เชื่อมแล้ว</span> ${esc(SLIP.name)}`:`<span class="tag warn">ยังไม่เชื่อม</span>${DEV.slipName?' '+esc(DEV.slipName):''}`)+(DEV.slipOn?' · <span class="tag ok">รับพิมพ์อยู่</span>':' · <span class="tag">ปิดรับพิมพ์</span>');
   $('slipBtn').textContent=SLIP.connected?'เชื่อมเครื่องอื่น':'เชื่อมบลูทูธ';keepAwake()}
-function initSlip(){DEV.slipOn=false;saveDev();return;updateSlipUI();setInterval(slipPump,15000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){keepAwake();slipPump()}});
+function initSlip(){if(DEV.slipV!==2){DEV.slipV=2;DEV.slipOn=false;saveDev()}updateSlipUI();setInterval(slipPump,15000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){keepAwake();slipPump()}});
   if(DEV.slipName&&hasBT()&&navigator.bluetooth.getDevices)navigator.bluetooth.getDevices().then(ds=>{const d=(ds||[]).find(x=>x.name===DEV.slipName);if(d)slipOpen(d).then(slipPump).catch(()=>{SLIP.device=d})}).catch(()=>{})}
 async function autoDrawer(){if(isAdmin()&&PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
 
