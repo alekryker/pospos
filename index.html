@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.5/qz-tray.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 (function(){try{var p=/[?&]demo=1/.test(location.search)?'demo:':'';var t=JSON.parse(localStorage.getItem(p+'p2:theme')||'"light"');
 if(t==='auto')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t;}catch(e){}})();
@@ -82,11 +83,27 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .chip.on{background:var(--accentInk);border-color:var(--accentInk);color:var(--bg)}
 .chip.on em{background:color-mix(in srgb,var(--bg) 18%,transparent);color:var(--bg)}
 
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:6px 18px 22px}
-@media (min-width:560px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (min-width:1280px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media (min-width:1600px){.grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
-.prod{position:relative;display:flex;flex-direction:column;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px;box-shadow:var(--shadow);transition:transform .1s,border-color .2s,box-shadow .2s}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:6px 12px 22px}
+@media (min-width:700px){.grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:6px 18px 22px}}
+@media (min-width:1000px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media (min-width:1280px){.grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (min-width:1600px){.grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.prod{position:relative;display:flex;flex-direction:column;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px;box-shadow:var(--shadow);transition:transform .1s,border-color .2s,box-shadow .2s;cursor:pointer;user-select:none;-webkit-user-select:none}
+/* มือถือ: 4 สินค้าต่อแถว การ์ดกะทัดรัด */
+@media (max-width:699px){
+  .tools{padding-left:12px;padding-right:12px}
+  .prod{padding:4px;border-radius:13px}
+  .pimg{border-radius:10px}
+  .pimg img{padding:5%}
+  .pimg.ph .ini{font-size:18px}
+  .pbody{padding:5px 2px 2px;gap:2px}
+  .pname{font-size:11px;line-height:1.25;min-height:28px;font-weight:600}
+  .prow{flex-direction:column;align-items:flex-start;gap:1px}
+  .pprice{font-size:13px}
+  .pstock{font-size:9px;padding:0 5px}
+  .badge{top:3px;right:3px;min-width:22px;height:22px;padding:0 6px;font-size:12px}
+  .minus{top:3px;left:3px;width:26px;height:26px;font-size:17px}
+}
 .prod:active{transform:scale(.97)}
 .prod.inCart{border-color:color-mix(in srgb,var(--brand) 70%,transparent);box-shadow:0 0 0 3px var(--brandSoft),var(--shadow)}
 .prod.out{opacity:.45}
@@ -258,6 +275,11 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .keys button:active{background:var(--raise2)}
 .noncash{text-align:center;padding:30px 10px;border-radius:20px;background:var(--bg2);border:1px solid var(--line)}
 .noncash .ic{font-size:48px}.noncash b{display:block;margin-top:8px;font-size:34px;font-weight:800}
+.qrBox{padding:16px 10px;background:#fff;color:#121316;border-color:#e5e5e0}
+.qrBox .muted{color:#6c6f78}
+.ppQr{width:min(240px,70vw);aspect-ratio:1/1;display:block;margin:0 auto;image-rendering:pixelated;border-radius:10px}
+.ppName{margin-top:8px;font-weight:700;font-size:14px;color:#0b3c7a}
+.qrBox b{margin-top:2px!important}
 .done{text-align:center;padding:12px 0 4px}
 .done .ok{width:84px;height:84px;margin:0 auto 14px;border-radius:50%;background:var(--grad);color:var(--brandInk);display:grid;place-items:center;box-shadow:0 0 0 10px var(--brandSoft);animation:pop .4s cubic-bezier(.3,1.6,.5,1)}
 .done h3{font-size:22px;font-weight:800}
@@ -390,6 +412,10 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="field" style="margin:0"><label>ข้อความท้ายบิล</label><input id="rFoot" placeholder="ขอบคุณค่ะ/ครับ"></div>
       </div>
       <div class="card adminOnly">
+        <h4>พร้อมเพย์ (QR รับเงิน)</h4>
+        <div class="field" style="margin:0"><label>เบอร์โทร หรือเลขบัตรประชาชน / เลขผู้เสียภาษี</label><input id="ppId" inputmode="numeric" placeholder="0646283140"><small>QR จะล็อกยอดตามบิลอัตโนมัติ และพิมพ์ลงใบเสร็จเมื่อชำระด้วย QR</small></div>
+      </div>
+      <div class="card adminOnly">
         <h4>แจ้งเตือน Telegram</h4>
         <div class="switch" style="padding-top:0"><div><b>แจ้งเมื่อขาย ยกเลิกบิล ปิดกะ และสต๊อกใกล้หมด</b><small id="tgQueueTxt">ส่งตรงจากเครื่องนี้</small></div><label class="tg"><input type="checkbox" id="tgOn"><span></span></label></div>
         <div class="field"><label>Bot Token</label><input id="tgToken" type="password" autocomplete="off" placeholder="123456:ABC-..."><small>เก็บไว้ในเครื่องนี้เท่านั้น</small></div>
@@ -460,7 +486,22 @@ const salesBetween=(a,b)=>tx('sales','readonly',st=>reqP(st.index('day').getAll(
 const dbClear=s=>tx(s,'readwrite',st=>{st.clear()});
 
 let PRODUCTS=store.get('products',[]),STAFF=store.get('staff',[]);
-let SET=Object.assign({shop:'',head:'',foot:'',paper:80,autoPrint:true,theme:'light',tgOn:false,tgToken:'',tgChat:'',billPrefix:'B'},store.get('settings',{}));
+let SET=Object.assign({shop:'',head:'',foot:'',paper:80,autoPrint:true,theme:'light',tgOn:false,tgToken:'',tgChat:'',billPrefix:'B',promptpay:'0646283140'},store.get('settings',{}));
+
+/* ===== PromptPay QR (EMVCo) — ล็อกยอดเงิน ===== */
+function crc16(s){let c=0xFFFF;for(let i=0;i<s.length;i++){c^=s.charCodeAt(i)<<8;for(let j=0;j<8;j++)c=(c&0x8000)?((c<<1)^0x1021):(c<<1);c&=0xFFFF}return c.toString(16).toUpperCase().padStart(4,'0')}
+function ppPayload(id,amount){
+  const f=(t,v)=>t+String(v.length).padStart(2,'0')+v;let a=String(id||'').replace(/\D/g,''),acc;
+  if(a.length>=13)acc=f('02',a);else acc=f('01',('0000000000000'+a.replace(/^0/,'66')).slice(-13));
+  const p=f('00','01')+f('01',amount?'12':'11')+f('29',f('00','A000000677010111')+acc)+f('53','764')+(amount?f('54',Number(amount).toFixed(2)):'')+f('58','TH')+'6304';
+  return p+crc16(p);
+}
+const fmtPP=id=>{const a=String(id||'').replace(/\D/g,'');return a.length===10?`${a.slice(0,3)}-${a.slice(3,6)}-${a.slice(6)}`:a};
+function qrMatrix(text){if(typeof qrcode==='undefined')return null;const q=qrcode(0,'M');q.addData(text);q.make();const n=q.getModuleCount();return{n,dark:(r,c)=>q.isDark(r,c)}}
+function qrDataURL(text,px=8){const m=qrMatrix(text);if(!m)return '';const q=4,s=(m.n+q*2)*px,c=document.createElement('canvas');c.width=c.height=s;
+  const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,s,s);x.fillStyle='#000';
+  for(let r=0;r<m.n;r++)for(let k=0;k<m.n;k++)if(m.dark(r,k))x.fillRect((k+q)*px,(r+q)*px,px,px);return c.toDataURL('image/png')}
+const ppReady=()=>!!(SET.promptpay&&String(SET.promptpay).replace(/\D/g,'').length>=10);
 let USER=null,SHIFT=store.get('shift',null),CART=[],DISC_MODE='BAHT',CAT='',VIEW='sell',DASH_MODE='DAY',BUSY=false,PAY={method:'เงินสด',input:''};
 const saveProducts=()=>store.set('products',PRODUCTS),saveStaff=()=>store.set('staff',STAFF),saveSet=()=>store.set('settings',SET);
 const isAdmin=()=>USER&&USER.role==='ADMIN',prodById=id=>PRODUCTS.find(p=>p.id===id);
@@ -552,12 +593,12 @@ function renderChips(){
 const qtyOf=id=>{const c=CART.find(x=>x.id===id);return c?c.qty:0};
 function prodCard(p){
   const q=qtyOf(p.id),st=Number(p.stock||0),out=st<=0,low=!out&&Number(p.low)>0&&st<=Number(p.low);
-  return `<button class="prod ${q?'inCart':''} ${out?'out':''}" data-add="${esc(p.id)}" id="pc-${esc(p.id)}">
+  return `<div class="prod ${q?'inCart':''} ${out?'out':''}" role="button" tabindex="0" data-add="${esc(p.id)}" id="pc-${esc(p.id)}">
     <div class="pimg ${p.image?'':'ph'}" style="--h:${hue(p.category)}"><span class="ini">${esc(String(p.name||'?').trim().slice(0,2))}</span>
       ${p.image?`<img loading="lazy" src="${esc(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('ph');this.remove()">`:''}
       ${q?`<span class="badge num">${q}</span><span class="minus" data-minus="${esc(p.id)}">−</span>`:''}</div>
     <div class="pbody"><div class="pname">${esc(p.name)}</div><div class="prow"><span class="pprice num">${money0(p.price)}</span>
-      <span class="pstock ${out?'zero':low?'low':''}">${out?'หมด':'เหลือ '+st.toLocaleString()}</span></div></div></button>`;
+      <span class="pstock ${out?'zero':low?'low':''}">${out?'หมด':'เหลือ '+st.toLocaleString()}</span></div></div></div>`;
 }
 function renderGrid(){
   const q=$('q').value.trim().toLowerCase();
@@ -647,13 +688,21 @@ function openPayment(){
       <div class="meta"><div><span class="lbl">ยอดที่ต้องชำระ</span><b class="num">${money(t.net)}</b></div><div class="chg" id="pChgBox" style="text-align:right"><span class="lbl" id="pChgLbl">เงินทอน</span><b class="num" id="pChg">฿0.00</b></div></div></div>
       <div class="quick"><button data-cash="full">พอดี</button>${cashSuggest(t.net).map(v=>`<button class="num" data-cash="${v}">${v.toLocaleString()}</button>`).join('')}</div>
       <div class="keys">${['7','8','9','4','5','6','1','2','3','.','0','⌫'].map(k=>`<button data-key="${k}">${k}</button>`).join('')}</div></div>
-    <div id="payOther" class="hidden"><div class="noncash"><div class="ic">📱</div><div class="muted" style="margin-top:6px">ตรวจสอบยอดเงินเข้า แล้วกดยืนยัน</div><b class="num">${money(t.net)}</b></div></div>`,
+    <div id="payQR" class="hidden"><div class="noncash qrBox">
+      ${ppReady()?`<img class="ppQr" src="${qrDataURL(ppPayload(SET.promptpay,t.net),8)}" alt="PromptPay QR">
+        <div class="ppName">พร้อมเพย์ ${esc(fmtPP(SET.promptpay))}</div><b class="num">${money(t.net)}</b>
+        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>
+        <button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>`
+      :`<div class="ic">📱</div><div class="muted">ยังไม่ได้ตั้งเลขพร้อมเพย์ (ตั้งค่า → พร้อมเพย์)</div><b class="num">${money(t.net)}</b>`}</div></div>
+    <div id="payOther" class="hidden"><div class="noncash"><div class="ic">🏦</div><div class="muted" style="margin-top:6px">ตรวจสอบยอดเงินเข้า แล้วกดยืนยัน</div><b class="num">${money(t.net)}</b></div></div>`,
     actions:[{label:'ยืนยันชำระเงิน',cls:'green',onClick:a=>{const n=totals().net;
       if(PAY.method==='เงินสด'){if(PAY.input==='')PAY.input=String(n);if(Number(PAY.input)<n){a.err('รับเงินไม่ครบ ขาด '+money(n-Number(PAY.input)));return}}a.close();checkout()}}],
     onOpen:a=>{a.el.addEventListener('click',e=>{const pm=e.target.closest('[data-pm]'),k=e.target.closest('[data-key]'),c=e.target.closest('[data-cash]');a.err('');
       if(pm){PAY.method=pm.dataset.pm;a.el.querySelectorAll('[data-pm]').forEach(b=>b.classList.toggle('on',b===pm));
-        a.el.querySelector('#payCash').classList.toggle('hidden',PAY.method!=='เงินสด');a.el.querySelector('#payOther').classList.toggle('hidden',PAY.method==='เงินสด');
+        a.el.querySelector('#payCash').classList.toggle('hidden',PAY.method!=='เงินสด');a.el.querySelector('#payQR').classList.toggle('hidden',PAY.method!=='QR');
+        a.el.querySelector('#payOther').classList.toggle('hidden',PAY.method==='เงินสด'||PAY.method==='QR');
         a.el.querySelector('#payOther .ic').textContent=(PAYMENTS.find(p=>p[0]===PAY.method)||[])[1]}
+      if(e.target.closest('[data-printqr]'))printReceipt(preBill());
       if(k)payKey(k.dataset.key);if(c){PAY.input=c.dataset.cash==='full'?String(Number(totals().net.toFixed(2))):c.dataset.cash;updatePay()}});updatePay()}});
   payModal.onClose=()=>{payModal=null};
 }
@@ -877,15 +926,21 @@ async function tgTest(){if(!SET.tgToken||!SET.tgChat){toast('กรอก Bot To
   try{await tgPost(`✅ ทดสอบแจ้งเตือนจาก ${tgEsc(SET.shop||'POS')}`);toast('ส่งสำเร็จ ตรวจสอบใน Telegram','ok')}catch(e){toast('ส่งไม่สำเร็จ: '+errMsg(e),'err')}finally{loading(false)}}
 
 /* ===== RECEIPT ===== */
+/* ใบแจ้งยอดก่อนชำระ พร้อม QR ให้ลูกค้าสแกน */
+function preBill(){const t=totals();return{pre:true,billNo:'-',datetime:fmtTime(Date.now()),staff:USER?USER.name:'-',
+  items:CART.map(c=>({name:c.name,qty:c.qty,price:c.price,total:c.price*c.qty})),subtotal:t.subtotal,discount:t.discount,net:t.net,payment:'QR',paid:t.net,change:0,note:$('note').value.trim()}}
+const showQR=r=>r.payment==='QR'&&ppReady()&&Number(r.net)>0;
 const receiptOf=s=>({billNo:s.billNo,datetime:fmtTime(s.ts),staff:s.staff,items:s.items,subtotal:s.subtotal,discount:s.discount,net:s.net,payment:s.payment,paid:s.paid,change:s.change,note:s.note});
 const rcShop=()=>SET.shop||'POS',rcHead=()=>String(SET.head||'').split('\n').map(x=>x.trim()).filter(Boolean),rcFoot=()=>SET.foot||'ขอบคุณค่ะ/ครับ';
 const unitOf=i=>Number(i.price??(Number(i.total||0)/Math.max(1,Number(i.qty)||1)));
 function receiptHtml(r){return `<div class="c bold" style="font-size:1.35em">${esc(rcShop())}</div>${rcHead().map(l=>`<div class="c">${esc(l)}</div>`).join('')}
-  <div class="c bold" style="margin-top:4px">ใบเสร็จรับเงิน</div><div class="c">${esc(r.datetime)}</div><hr><div>บิล: ${esc(r.billNo)}</div><div>พนักงาน: ${esc(r.staff)}</div><hr>
+  <div class="c bold" style="margin-top:4px">${r.pre?'ใบแจ้งยอด (ยังไม่ชำระ)':'ใบเสร็จรับเงิน'}</div><div class="c">${esc(r.datetime)}</div><hr>${r.pre?'':`<div>บิล: ${esc(r.billNo)}</div>`}<div>พนักงาน: ${esc(r.staff)}</div><hr>
   ${(r.items||[]).map(i=>`<div>${esc(i.name)}</div><div class="lr"><span>&nbsp;&nbsp;${i.qty} x ${money0(unitOf(i))}</span><span>${money(i.total)}</span></div>`).join('')}<hr>
   <div class="lr"><span>รวม</span><span>${money(r.subtotal)}</span></div>${Number(r.discount)?`<div class="lr"><span>ส่วนลด</span><span>-${money(r.discount)}</span></div>`:''}
-  <div class="lr bold" style="font-size:1.2em"><span>สุทธิ</span><span>${money(r.net)}</span></div><div class="lr"><span>ชำระ</span><span>${esc(r.payment)}</span></div>
-  ${r.payment==='เงินสด'?`<div class="lr"><span>รับเงิน</span><span>${money(r.paid)}</span></div><div class="lr"><span>เงินทอน</span><span>${money(r.change)}</span></div>`:''}${r.note?`<div>หมายเหตุ: ${esc(r.note)}</div>`:''}<hr><div class="c">${esc(rcFoot())}</div>`}
+  <div class="lr bold" style="font-size:1.2em"><span>${r.pre?'ยอดที่ต้องชำระ':'สุทธิ'}</span><span>${money(r.net)}</span></div>${r.pre?'':`<div class="lr"><span>ชำระ</span><span>${esc(r.payment)}</span></div>`}
+  ${r.payment==='เงินสด'?`<div class="lr"><span>รับเงิน</span><span>${money(r.paid)}</span></div><div class="lr"><span>เงินทอน</span><span>${money(r.change)}</span></div>`:''}${r.note?`<div>หมายเหตุ: ${esc(r.note)}</div>`:''}
+  ${showQR(r)?`<hr><div class="c bold">สแกนจ่ายด้วยพร้อมเพย์</div><div class="c"><img src="${qrDataURL(ppPayload(SET.promptpay,r.net),6)}" alt="" style="width:62%;max-width:180px;display:inline-block;image-rendering:pixelated"></div>
+    <div class="c">พร้อมเพย์ ${esc(fmtPP(SET.promptpay))}</div><div class="c bold">${money(r.net)}</div>`:''}<hr><div class="c">${esc(rcFoot())}</div>`}
 const testReceipt=()=>({billNo:'TEST',datetime:fmtTime(Date.now()),staff:USER?USER.name:'-',items:[{name:'ทดสอบภาษาไทย สินค้าตัวอย่าง',qty:2,price:60,total:120},{name:'Test item ABC',qty:1,price:45,total:45}],subtotal:165,discount:5,net:160,payment:'เงินสด',paid:200,change:40,note:'พิมพ์ทดสอบ'});
 function segWords(t){t=String(t??'');if(window.Intl&&Intl.Segmenter){try{return Array.from(new Intl.Segmenter('th',{granularity:'word'}).segment(t),s=>s.segment)}catch(e){}}return Array.from(t)}
 function wrapText(ctx,text,maxW){const L=[];let cur='';for(const w of segWords(text)){if(ctx.measureText(cur+w).width<=maxW||!cur)cur+=w;else{L.push(cur.trimEnd());cur=w.trimStart()}}if(cur)L.push(cur);return L.length?L:['']}
@@ -898,10 +953,16 @@ async function receiptCanvas(r){
   const left=(t,s=F,b=false)=>{font(s,b);x.textAlign='left';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,M,y);y+=s+8})};
   const lr=(l,rt,s=F,b=false)=>{font(s,b);const rw=x.measureText(rt).width;x.textAlign='left';wrapText(x,l,W-M*2-rw-12).forEach((ln,i)=>{x.fillText(ln,M,y);if(!i){x.textAlign='right';x.fillText(rt,W-M,y);x.textAlign='left'}y+=s+8})};
   const rule=()=>{y+=2;for(let i=M;i<W-M;i+=10)x.fillRect(i,y,6,2);y+=10};
-  center(rcShop(),F+12,true);rcHead().forEach(l=>center(l,F-2));y+=4;center('ใบเสร็จรับเงิน',F+2,true);center(r.datetime,F-2);rule();left('บิล: '+r.billNo);left('พนักงาน: '+r.staff);rule();
+  center(rcShop(),F+12,true);rcHead().forEach(l=>center(l,F-2));y+=4;center(r.pre?'ใบแจ้งยอด (ยังไม่ชำระ)':'ใบเสร็จรับเงิน',F+2,true);center(r.datetime,F-2);rule();
+  if(!r.pre)left('บิล: '+r.billNo);left('พนักงาน: '+r.staff);rule();
   (r.items||[]).forEach(i=>{left(i.name);lr('   '+i.qty+' x '+money0(unitOf(i)),money(i.total))});rule();
-  lr('รวม',money(r.subtotal));if(Number(r.discount))lr('ส่วนลด','-'+money(r.discount));lr('สุทธิ',money(r.net),F+8,true);lr('ชำระ',String(r.payment));
-  if(r.payment==='เงินสด'){lr('รับเงิน',money(r.paid));lr('เงินทอน',money(r.change))}if(r.note)left('หมายเหตุ: '+r.note);rule();center(rcFoot());y+=16;
+  lr('รวม',money(r.subtotal));if(Number(r.discount))lr('ส่วนลด','-'+money(r.discount));lr(r.pre?'ยอดที่ต้องชำระ':'สุทธิ',money(r.net),F+8,true);if(!r.pre)lr('ชำระ',String(r.payment));
+  if(r.payment==='เงินสด'){lr('รับเงิน',money(r.paid));lr('เงินทอน',money(r.change))}if(r.note)left('หมายเหตุ: '+r.note);
+  if(showQR(r)){const m=qrMatrix(ppPayload(SET.promptpay,r.net));if(m){rule();center('สแกนจ่ายด้วยพร้อมเพย์',F,true);
+    const px=Math.floor(W*0.62/(m.n+2)),sz=px*m.n,x0=Math.floor((W-sz)/2);y+=6;
+    for(let rr=0;rr<m.n;rr++)for(let cc=0;cc<m.n;cc++)if(m.dark(rr,cc))x.fillRect(x0+cc*px,y+rr*px,px,px);
+    y+=sz+10;center('พร้อมเพย์ '+fmtPP(SET.promptpay),F-2);center(money(r.net),F+4,true)}}
+  rule();center(rcFoot());y+=16;
   const out=document.createElement('canvas');out.width=W;out.height=Math.ceil(y);const o=out.getContext('2d',{alpha:false,willReadFrequently:true});o.fillStyle='#fff';o.fillRect(0,0,W,out.height);o.drawImage(c,0,0);return out;
 }
 function canvasRasterChunk(cv,sy,rows){const img=cv.getContext('2d').getImageData(0,sy,cv.width,rows),wb=Math.ceil(cv.width/8),data=new Uint8Array(wb*rows);let di=0;
@@ -974,7 +1035,7 @@ async function autoDrawer(){if(PRINTER.connected&&['BT','WEBUSB','QZ'].includes(
 
 /* ===== SETTINGS / VIEW ===== */
 function loadSettingsUI(){$('rShop').value=SET.shop||'';$('rHead').value=SET.head||'';$('rFoot').value=SET.foot||'';$('pAuto').checked=!!SET.autoPrint;
-  $('tgOn').checked=!!SET.tgOn;$('tgToken').value=SET.tgToken||'';$('tgChat').value=SET.tgChat||'';$('shopTitle').textContent=SET.shop||'POS';document.title=(SET.shop||'POS')+' · POS';
+  $('ppId').value=SET.promptpay||'';$('tgOn').checked=!!SET.tgOn;$('tgToken').value=SET.tgToken||'';$('tgChat').value=SET.tgChat||'';$('shopTitle').textContent=SET.shop||'POS';document.title=(SET.shop||'POS')+' · POS';
   document.querySelectorAll('#paperSeg button').forEach(b=>b.classList.toggle('on',Number(b.dataset.paper)===Number(SET.paper)));applyTheme();renderTgQueue()}
 function setView(v){VIEW=v;document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));document.querySelectorAll('#nav [data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
   if(v!=='sell')closeCart();if(v==='bills'){renderHeld();renderBills()}if(v==='report')renderReport();renderCart();window.scrollTo(0,0)}
@@ -982,7 +1043,7 @@ function renderAll(){renderChips();renderGrid();renderCart();renderHeld();render
 function bindUI(){
   document.addEventListener('click',e=>{
     const t=e.target;if(t.closest('.modal')||t.closest('#gate'))return;
-    const mi=t.closest('[data-minus]');if(mi){e.stopPropagation();changeQty(mi.dataset.minus,-1);return}
+    const mi=t.closest('[data-minus]');if(mi){e.preventDefault();e.stopPropagation();changeQty(mi.dataset.minus,-1);return}
     const ad=t.closest('[data-add]');if(ad){add(ad.dataset.add);return}
     const ca=t.closest('[data-cat]');if(ca){CAT=ca.dataset.cat;renderChips();renderGrid();return}
     const inc=t.closest('[data-inc]');if(inc){changeQty(inc.dataset.inc,1);return}
@@ -1004,7 +1065,7 @@ function bindUI(){
   });
   $('q').addEventListener('input',renderGrid);$('discVal').addEventListener('input',renderCart);
   $('pAuto').addEventListener('change',e=>{SET.autoPrint=e.target.checked;saveSet()});
-  [['rShop','shop'],['rHead','head'],['rFoot','foot'],['tgToken','tgToken'],['tgChat','tgChat']].forEach(([id,k])=>$(id).addEventListener('input',e=>{SET[k]=k==='head'?e.target.value:e.target.value.trim();saveSet();if(k==='shop')$('shopTitle').textContent=SET.shop||'POS'}));
+  [['rShop','shop'],['rHead','head'],['rFoot','foot'],['tgToken','tgToken'],['tgChat','tgChat'],['ppId','promptpay']].forEach(([id,k])=>$(id).addEventListener('input',e=>{SET[k]=k==='head'?e.target.value:e.target.value.trim();saveSet();if(k==='shop')$('shopTitle').textContent=SET.shop||'POS'}));
   $('tgOn').addEventListener('change',e=>{SET.tgOn=e.target.checked;saveSet();if(SET.tgOn)tgFlush()});
   $('billDate').addEventListener('change',renderBills);$('dashDate').addEventListener('change',renderReport);
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCart()});
