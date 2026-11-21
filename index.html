@@ -925,7 +925,7 @@ function openPayment(){
       <div class="keys">${['7','8','9','4','5','6','1','2','3','.','0','⌫'].map(k=>`<button data-key="${k}">${k}</button>`).join('')}</div></div>
     <div id="payQR"><div class="noncash qrBox">
       ${ppReady()?`<img class="ppQr" src="${qrDataURL(ppPayload(sh.promptpay,t.net),8)}" alt="PromptPay QR"><div class="ppName">พร้อมเพย์ ${esc(fmtPP(sh.promptpay))}</div><b class="num">${money(t.net)}</b>
-        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>${isAdmin()?'<button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>':''}`
+        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>`
       :`<div class="ic">📱</div><div class="muted">ยังไม่ได้ตั้งเลขพร้อมเพย์ (ตั้งค่า → ร้าน)</div><b class="num">${money(t.net)}</b>`}</div></div>
     <div id="payOther" class="hidden"><div class="noncash"><div class="ic">🏦</div><div class="muted" style="margin-top:6px">ตรวจสอบยอดเงินเข้า แล้วกดยืนยัน</div><b class="num">${money(t.net)}</b></div></div>`,
     actions:[{label:'ยืนยันชำระเงิน',cls:'green',onClick:a=>{const n=totals().net;
@@ -1282,6 +1282,10 @@ const showQR=r=>r.payment==='QR'&&ppReady()&&Number(r.net)>0;
 const receiptOf=s=>({billNo:s.billNo,datetime:fmtTime(s.ts),staff:s.staff,items:s.items,subtotal:s.subtotal,discount:s.discount,net:s.net,payment:s.payment,paid:s.paid,change:s.change,note:s.note});
 const rcShop=()=>shop().shop||'POS',rcHead=()=>String(shop().head||'').split('\n').map(x=>x.trim()).filter(Boolean),rcFoot=()=>shop().foot||'ขอบคุณค่ะ/ครับ';
 const unitOf=i=>Number(i.price??(Number(i.total||0)/Math.max(1,Number(i.qty)||1)));
+function slipHtml(r){return `${rcShop()?`<div class="c bold" style="font-size:1.25em">${esc(rcShop())}</div>`:''}<div class="c bold" style="font-size:1.2em">ใบรายการสินค้า</div><div class="c">${esc(r.datetime||fmtTime(r.ts||Date.now()))}</div><hr>
+  ${r.billNo&&!r.pre?`<div>บิล: ${esc(r.billNo)}</div>`:''}<div class="bold">พนักงาน: ${esc(r.staff||'-')}</div>${r.note?`<div class="bold">หมายเหตุ: ${esc(r.note)}</div>`:''}<hr>
+  ${(r.items||[]).map(i=>`<div class="lr bold" style="font-size:1.1em"><span>${esc(i.name)}</span><span style="white-space:nowrap">x ${i.qty}</span></div>`).join('')}<hr>
+  <div class="lr bold"><span>รวม</span><span>${itemCount(r)} ชิ้น</span></div>`}
 const itemCount=r=>(r.items||[]).reduce((n,i)=>n+(Number(i.qty)||0),0);
 function receiptHtml(r){const pp=shop().promptpay;return `<div class="c bold" style="font-size:1.35em">${esc(rcShop())}</div>${rcHead().map(l=>`<div class="c">${esc(l)}</div>`).join('')}
   <div class="c bold" style="margin-top:4px">${r.pre?'ใบแจ้งยอด (ยังไม่ชำระ)':'ใบเสร็จรับเงิน'}</div><div class="c">${esc(r.datetime)}</div><hr>${r.pre?'':`<div>บิล: ${esc(r.billNo)}</div>`}<div>พนักงาน: ${esc(r.staff)}</div><hr>
@@ -1320,13 +1324,13 @@ async function receiptCanvas(r){
 function canvasRasterChunk(cv,sy,rows){const img=cv.getContext('2d').getImageData(0,sy,cv.width,rows),wb=Math.ceil(cv.width/8),data=new Uint8Array(wb*rows);let di=0;
   for(let yy=0;yy<rows;yy++)for(let xb=0;xb<wb;xb++){let b=0;for(let bit=0;bit<8;bit++){const xx=xb*8+bit;if(xx>=cv.width)continue;const p=(yy*cv.width+xx)*4;if(.299*img.data[p]+.587*img.data[p+1]+.114*img.data[p+2]<165)b|=(0x80>>bit)}data[di++]=b}
   const cmd=new Uint8Array(8+data.length);cmd.set([0x1D,0x76,0x30,0x00,wb&255,(wb>>8)&255,rows&255,(rows>>8)&255],0);cmd.set(data,8);return cmd}
-async function escposReceipt(r){const c=await receiptCanvas(r),p=[new Uint8Array([0x1B,0x40])];for(let y=0;y<c.height;y+=128)p.push(canvasRasterChunk(c,y,Math.min(128,c.height-y)));p.push(new Uint8Array([0x1B,0x64,0x04,0x1D,0x56,0x42,0x00]));return p}
+async function escposReceipt(r){const c=await slipCanvas(r,DEV.paper),p=[new Uint8Array([0x1B,0x40])];for(let y=0;y<c.height;y+=128)p.push(canvasRasterChunk(c,y,Math.min(128,c.height-y)));p.push(new Uint8Array([0x1B,0x64,0x04,0x1D,0x56,0x42,0x00]));return p}
 function printDialog(r){
   const old=$('receiptPrintFrame');if(old)old.remove();const w=Number(DEV.paper)===58?'48mm':'72mm';
   const f=document.createElement('iframe');f.id='receiptPrintFrame';f.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';document.body.appendChild(f);
   const d=f.contentDocument||f.contentWindow.document;
   d.open();d.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบเสร็จ</title><link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#000}body{font-family:'Anuphan',sans-serif;font-size:11.5px;line-height:1.4}#p{width:${w};max-width:${w};padding:2mm}.c{text-align:center}.bold{font-weight:700}.lr{display:flex;justify-content:space-between;gap:6px}hr{border:0;border-top:1px dashed #000;margin:5px 0}@page{margin:0}</style></head><body><div id="p">${receiptHtml(r)}</div></body></html>`);d.close();
+  <style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#000}body{font-family:'Anuphan',sans-serif;font-size:11.5px;line-height:1.4}#p{width:${w};max-width:${w};padding:2mm}.c{text-align:center}.bold{font-weight:700}.lr{display:flex;justify-content:space-between;gap:6px}hr{border:0;border-top:1px dashed #000;margin:5px 0}@page{margin:0}</style></head><body><div id="p">${slipHtml(r)}</div></body></html>`);d.close();
   const go=()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){toast('เปิดหน้าพิมพ์ไม่สำเร็จ','err')}setTimeout(()=>{try{f.remove()}catch(_){}},4000)};
   const ready=()=>{const fd=f.contentDocument;(fd.fonts&&fd.fonts.ready?fd.fonts.ready:Promise.resolve()).then(()=>setTimeout(go,150))};if(d.readyState==='complete')ready();else f.onload=ready;
 }
@@ -1376,7 +1380,7 @@ async function connectQZ(silent){if(typeof qz==='undefined')throw new Error('ไ
 async function sendRaw(parts){for(const p of parts){if(PRINTER.mode==='BT')await btWrite(p);else if(PRINTER.mode==='WEBUSB')await usbWrite(p)}}
 async function printReceipt(r){
   if(PRINTER.mode==='AIRPRINT'||(!PRINTER.connected&&!(PRINTER.mode==='BT'&&BT.device))){if(PRINTER.mode!=='AIRPRINT')toast('ยังไม่เชื่อมเครื่องพิมพ์ — เปิดหน้าต่างพิมพ์แทน','warn');printDialog(r);return}
-  try{if(PRINTER.mode==='QZ'){const c=await receiptCanvas(r);await qz.print(qz.configs.create(PRINTER.name),[{type:'raw',format:'image',flavor:'base64',data:c.toDataURL('image/png').split(',')[1],options:{language:'ESCPOS',dotDensity:'double'}},{type:'raw',format:'command',flavor:'plain',data:'\x1B\x64\x04\x1D\x56\x42\x00'}])}
+  try{if(PRINTER.mode==='QZ'){const c=await slipCanvas(r,DEV.paper);await qz.print(qz.configs.create(PRINTER.name),[{type:'raw',format:'image',flavor:'base64',data:c.toDataURL('image/png').split(',')[1],options:{language:'ESCPOS',dotDensity:'double'}},{type:'raw',format:'command',flavor:'plain',data:'\x1B\x64\x04\x1D\x56\x42\x00'}])}
     else{toast('กำลังพิมพ์...');await sendRaw(await escposReceipt(r))}toast('พิมพ์ใบเสร็จแล้ว','ok')}
   catch(e){console.error(e);PRINTER.connected=false;updatePrinterUI();modal({title:'พิมพ์ไม่สำเร็จ',body:`<p>${esc(errMsg(e))}</p>`,actions:[{label:'หน้าต่างพิมพ์',onClick:a=>{a.close();printDialog(r)}},{label:'เชื่อมใหม่',cls:'green',onClick:a=>{a.close();connectPrinter()}}]})}}
 async function pulseDrawer(){if(!PRINTER.connected)throw new Error('กรุณาเชื่อมเครื่องพิมพ์ก่อน');
@@ -1397,17 +1401,17 @@ async function slipConnectUI(){try{if(!hasBT())throw new Error('เครื่�
 async function slipWrite(data){if(!SLIP.char||!SLIP.device.gatt.connected){if(SLIP.device)await slipOpen(SLIP.device);else throw new Error('ยังไม่ได้เชื่อมเครื่องพิมพ์ใบรายการ')}
   const c=SLIP.char,nr=c.properties.writeWithoutResponse&&c.writeValueWithoutResponse;
   for(let i=0;i<data.length;){const part=data.slice(i,i+SLIP.chunk);try{if(nr){await c.writeValueWithoutResponse(part);await sleep(6)}else if(c.writeValueWithResponse)await c.writeValueWithResponse(part);else await c.writeValue(part);i+=part.length}catch(e){if(SLIP.chunk>20){SLIP.chunk=20;continue}throw e}}}
-async function slipCanvas(s){
+async function slipCanvas(s,paper=DEV.slipPaper){
   try{await Promise.all([document.fonts.load('22px "Anuphan"'),document.fonts.load('bold 22px "Anuphan"')])}catch(e){}
-  const W=Number(DEV.slipPaper)===80?576:384,M=W===384?8:20,F=W===384?24:26,c=document.createElement('canvas');c.width=W;c.height=4000;
+  const W=Number(paper)===80?576:384,M=W===384?8:20,F=W===384?24:26,c=document.createElement('canvas');c.width=W;c.height=4000;
   const x=c.getContext('2d',{alpha:false,willReadFrequently:true});x.fillStyle='#fff';x.fillRect(0,0,W,c.height);x.fillStyle='#000';x.textBaseline='top';
   let y=10;const font=(z,b)=>x.font=`${b?'bold ':''}${z}px "Anuphan", sans-serif`;
   const center=(t,z=F,b=false)=>{font(z,b);x.textAlign='center';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,W/2,y);y+=z+8})};
   const left=(t,z=F,b=false)=>{font(z,b);x.textAlign='left';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,M,y);y+=z+8})};
   const lr=(l,rt,z=F,b=false)=>{font(z,b);const rw=x.measureText(rt).width;x.textAlign='left';wrapText(x,l,W-M*2-rw-14).forEach((ln,i)=>{x.fillText(ln,M,y);if(!i){x.textAlign='right';x.fillText(rt,W-M,y);x.textAlign='left'}y+=z+8})};
   const rule=()=>{y+=2;for(let i=M;i<W-M;i+=10)x.fillRect(i,y,6,2);y+=10};
-  center('ใบรายการสินค้า',F+10,true);center(fmtTime(s.ts||Date.now()),F-2);rule();
-  left('บิล: '+s.billNo);left('พนักงาน: '+(s.staff||'-'),F+2,true);if(s.note)left('หมายเหตุ: '+s.note,F+2,true);rule();
+  if(rcShop())center(rcShop(),F+6,true);center('ใบรายการสินค้า',F+8,true);center(s.datetime||fmtTime(s.ts||Date.now()),F-2);rule();
+  if(s.billNo&&!s.pre)left('บิล: '+s.billNo);left('พนักงาน: '+(s.staff||'-'),F+2,true);if(s.note)left('หมายเหตุ: '+s.note,F+2,true);rule();
   let n=0;(s.items||[]).forEach(i=>{n+=Number(i.qty)||0;lr(i.name,'x '+i.qty,F+4,true)});rule();
   lr('รวม',n+' ชิ้น',F+2,true);y+=20;
   const out=document.createElement('canvas');out.width=W;out.height=Math.ceil(y);const o=out.getContext('2d',{alpha:false,willReadFrequently:true});o.fillStyle='#fff';o.fillRect(0,0,W,out.height);o.drawImage(c,0,0);return out}
