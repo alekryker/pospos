@@ -340,7 +340,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
   <div class="sp"></div>
   <button class="pill hidden" id="syncPill" data-act="sync"><span class="dot"></span><span>ซิงก์</span></button>
   <button class="pill" id="shiftPill" data-act="shift"><span class="dot"></span><span>กะ</span></button>
-  <button class="pill" id="printerPill" data-act="goPrinter"><span class="dot"></span><span>เครื่องพิมพ์</span></button>
+  <button class="pill adminOnly" id="printerPill" data-act="goPrinter"><span class="dot"></span><span>เครื่องพิมพ์</span></button>
   <button class="iconBtn" data-act="theme" title="สลับธีม" id="themeBtn"></button>
   <button class="iconBtn" data-act="lock" title="ล็อก / สลับพนักงาน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
   <button class="iconBtn" data-act="signOut" title="ออกจากระบบ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
@@ -422,7 +422,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
       <div class="card"><h4>การเชื่อมต่อ</h4><div id="connBox"></div></div>
       <div class="card"><h4>ธีม</h4>
         <div class="seg full" id="themeSeg"><button data-theme="light">☀️ สว่าง</button><button data-theme="dark">🌙 มืด</button><button data-theme="auto">อัตโนมัติ</button></div></div>
-      <div class="card" id="printerCard">
+      <div class="card adminOnly" id="printerCard">
         <h4>เครื่องพิมพ์ใบเสร็จ (เครื่องนี้)</h4>
         <div class="opts" id="pModes"></div>
         <div id="pStatus" style="margin:12px 0 4px;font-size:13.5px"></div>
@@ -924,7 +924,7 @@ function openPayment(){
       <div class="keys">${['7','8','9','4','5','6','1','2','3','.','0','⌫'].map(k=>`<button data-key="${k}">${k}</button>`).join('')}</div></div>
     <div id="payQR"><div class="noncash qrBox">
       ${ppReady()?`<img class="ppQr" src="${qrDataURL(ppPayload(sh.promptpay,t.net),8)}" alt="PromptPay QR"><div class="ppName">พร้อมเพย์ ${esc(fmtPP(sh.promptpay))}</div><b class="num">${money(t.net)}</b>
-        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>${true?'<button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>':''}`
+        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>${isAdmin()?'<button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>':''}`
       :`<div class="ic">📱</div><div class="muted">ยังไม่ได้ตั้งเลขพร้อมเพย์ (ตั้งค่า → ร้าน)</div><b class="num">${money(t.net)}</b>`}</div></div>
     <div id="payOther" class="hidden"><div class="noncash"><div class="ic">🏦</div><div class="muted" style="margin-top:6px">ตรวจสอบยอดเงินเข้า แล้วกดยืนยัน</div><b class="num">${money(t.net)}</b></div></div>`,
     actions:[{label:'ยืนยันชำระเงิน',cls:'green',onClick:a=>{const n=totals().net;
@@ -953,13 +953,13 @@ async function checkout(){
     CART.forEach(c=>{const p=prodById(c.id);p.stock=Number(p.stock)-c.qty});cacheSave();
     resetBill();renderChips();showDone(s);
     if(payment==='เงินสด'||payment==='QR')autoDrawer();
-    if(PRINTER.connected&&DEV.autoPrint)setTimeout(()=>printReceipt(receiptOf(s)),250);
+    if(isAdmin()&&PRINTER.connected&&DEV.autoPrint)setTimeout(()=>printReceipt(receiptOf(s)),250);
     notifyTg(tgSale(s),'admin');if(USER.role!=='ADMIN')notifyTg(tgSale(s),'staff');
   }catch(e){toast('บันทึกบิลไม่สำเร็จ: '+errMsg(e),'err')}finally{BUSY=false;renderCart();renderSync()}
 }
 function showDone(s){modal({title:'',closable:false,body:`<div class="done"><div class="ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
   <h3>ชำระเงินสำเร็จ</h3><div class="bill">บิล ${esc(s.billNo)} · ${esc(s.payment)} · ${money(s.net)}</div>${s.payment==='เงินสด'?`<div class="chg"><small>เงินทอน</small><b class="num">${money(s.change)}</b></div>`:''}</div>`,
-  actions:[...(true?[{label:'🖨 พิมพ์ใบเสร็จ',onClick:()=>printReceipt(receiptOf(s))}]:[]),{label:'บิลใหม่',cls:'green',onClick:a=>a.close()}]})}
+  actions:[...(isAdmin()?[{label:'🖨 พิมพ์ใบเสร็จ',onClick:()=>printReceipt(receiptOf(s))}]:[]),{label:'บิลใหม่',cls:'green',onClick:a=>a.close()}]})}
 function lowStockAlert(s){const l=s.items.map(i=>prodById(i.id)).filter(p=>p&&Number(p.low)>0&&Number(p.stock)<=Number(p.low));if(l.length)notifyTg('⚠️ <b>สต๊อกใกล้หมด</b>\n'+l.map(p=>`• ${tgEsc(p.name)} เหลือ ${p.stock}`).join('\n'))}
 
 /* ======================= BILLS ======================= */
@@ -988,7 +988,7 @@ async function openBill(no){
   let s=await idbGet('outbox',no);const pending=!!s;
   if(!s)try{s=await API.getSale(no)}catch(e){toast(errMsg(e),'err');return}
   if(!s)return;
-  const acts=true?[{label:'🖨 พิมพ์',cls:'green',onClick:()=>printReceipt(receiptOf(s))}]:[];
+  const acts=isAdmin()?[{label:'🖨 พิมพ์',cls:'green',onClick:()=>printReceipt(receiptOf(s))}]:[];
   if(isAdmin()&&s.status!=='void'&&!pending)acts.unshift({label:'ยกเลิกบิล',cls:'red',onClick:a=>{a.close();voidBill(s)}});
   modal({title:'ใบเสร็จ '+esc(s.billNo),body:`${s.status==='void'?`<div class="tag bad" style="margin-bottom:8px">ยกเลิกแล้ว${s.voidReason?': '+esc(s.voidReason):''}</div>`:''}${pending?'<div class="tag warn" style="margin-bottom:8px">ยังไม่ได้ส่งขึ้นฐานข้อมูล</div>':''}
     <div class="paper" style="width:${Number(DEV.paper)===58?'230px':'300px'}">${receiptHtml(receiptOf(s))}</div>`,actions:acts});
@@ -1281,9 +1281,12 @@ const showQR=r=>r.payment==='QR'&&ppReady()&&Number(r.net)>0;
 const receiptOf=s=>({billNo:s.billNo,datetime:fmtTime(s.ts),staff:s.staff,items:s.items,subtotal:s.subtotal,discount:s.discount,net:s.net,payment:s.payment,paid:s.paid,change:s.change,note:s.note});
 const rcShop=()=>shop().shop||'POS',rcHead=()=>String(shop().head||'').split('\n').map(x=>x.trim()).filter(Boolean),rcFoot=()=>shop().foot||'ขอบคุณค่ะ/ครับ';
 const unitOf=i=>Number(i.price??(Number(i.total||0)/Math.max(1,Number(i.qty)||1)));
+const itemCount=r=>(r.items||[]).reduce((n,i)=>n+(Number(i.qty)||0),0);
 function receiptHtml(r){const pp=shop().promptpay;return `<div class="c bold" style="font-size:1.35em">${esc(rcShop())}</div>${rcHead().map(l=>`<div class="c">${esc(l)}</div>`).join('')}
   <div class="c bold" style="margin-top:4px">${r.pre?'ใบแจ้งยอด (ยังไม่ชำระ)':'ใบเสร็จรับเงิน'}</div><div class="c">${esc(r.datetime)}</div><hr>${r.pre?'':`<div>บิล: ${esc(r.billNo)}</div>`}<div>พนักงาน: ${esc(r.staff)}</div><hr>
-  ${(r.items||[]).map(i=>`<div>${esc(i.name)}</div><div class="lr"><span>&nbsp;&nbsp;${i.qty} x ${money0(unitOf(i))}</span><span>${money(i.total)}</span></div>`).join('')}<hr>
+  <div class="lr bold"><span>สินค้า</span><span>จำนวน</span></div>
+  ${(r.items||[]).map(i=>`<div class="lr bold"><span>${esc(i.name)}</span><span style="white-space:nowrap">x ${i.qty}</span></div><div class="lr"><span>&nbsp;&nbsp;@${money0(unitOf(i))}</span><span>${money(i.total)}</span></div>`).join('')}
+  <hr><div class="lr bold"><span>รวม ${(r.items||[]).length} รายการ</span><span>${itemCount(r)} ชิ้น</span></div><hr>
   <div class="lr"><span>รวม</span><span>${money(r.subtotal)}</span></div>${Number(r.discount)?`<div class="lr"><span>ส่วนลด</span><span>-${money(r.discount)}</span></div>`:''}
   <div class="lr bold" style="font-size:1.2em"><span>${r.pre?'ยอดที่ต้องชำระ':'สุทธิ'}</span><span>${money(r.net)}</span></div>${r.pre?'':`<div class="lr"><span>ชำระ</span><span>${esc(r.payment)}</span></div>`}
   ${r.payment==='เงินสด'?`<div class="lr"><span>รับเงิน</span><span>${money(r.paid)}</span></div><div class="lr"><span>เงินทอน</span><span>${money(r.change)}</span></div>`:''}${r.note?`<div>หมายเหตุ: ${esc(r.note)}</div>`:''}
@@ -1303,7 +1306,8 @@ async function receiptCanvas(r){
   const rule=()=>{y+=2;for(let i=M;i<W-M;i+=10)x.fillRect(i,y,6,2);y+=10};
   center(rcShop(),F+12,true);rcHead().forEach(l=>center(l,F-2));y+=4;center(r.pre?'ใบแจ้งยอด (ยังไม่ชำระ)':'ใบเสร็จรับเงิน',F+2,true);center(r.datetime,F-2);rule();
   if(!r.pre)left('บิล: '+r.billNo);left('พนักงาน: '+r.staff);rule();
-  (r.items||[]).forEach(i=>{left(i.name);lr('   '+i.qty+' x '+money0(unitOf(i)),money(i.total))});rule();
+  lr('สินค้า','จำนวน',F,true);(r.items||[]).forEach(i=>{lr(i.name,'x '+i.qty,F+2,true);lr('   @'+money0(unitOf(i)),money(i.total))});rule();
+  lr('รวม '+(r.items||[]).length+' รายการ',itemCount(r)+' ชิ้น',F+2,true);rule();
   lr('รวม',money(r.subtotal));if(Number(r.discount))lr('ส่วนลด','-'+money(r.discount));lr(r.pre?'ยอดที่ต้องชำระ':'สุทธิ',money(r.net),F+8,true);if(!r.pre)lr('ชำระ',String(r.payment));
   if(r.payment==='เงินสด'){lr('รับเงิน',money(r.paid));lr('เงินทอน',money(r.change))}if(r.note)left('หมายเหตุ: '+r.note);
   if(showQR(r)){const pp=shop().promptpay,m=qrMatrix(ppPayload(pp,r.net));if(m){rule();center('สแกนจ่ายด้วยพร้อมเพย์',F,true);
@@ -1425,7 +1429,7 @@ function updateSlipUI(){const st=$('slipStatus');if(!st)return;$('slipOn').check
   $('slipBtn').textContent=SLIP.connected?'เชื่อมเครื่องอื่น':'เชื่อมบลูทูธ';keepAwake()}
 function initSlip(){updateSlipUI();setInterval(slipPump,15000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){keepAwake();slipPump()}});
   if(DEV.slipName&&hasBT()&&navigator.bluetooth.getDevices)navigator.bluetooth.getDevices().then(ds=>{const d=(ds||[]).find(x=>x.name===DEV.slipName);if(d)slipOpen(d).then(slipPump).catch(()=>{SLIP.device=d})}).catch(()=>{})}
-async function autoDrawer(){if(PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
+async function autoDrawer(){if(isAdmin()&&PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
 
 /* ======================= SETTINGS / VIEW ======================= */
 function loadSettingsUI(){const s=shop();$('rShop').value=s.shop||'';$('rHead').value=s.head||'';$('rFoot').value=s.foot||'';$('rNames').value=(s.noteNames||[]).join(', ');$('ppId').value=s.promptpay||'';$('pAuto').checked=!!DEV.autoPrint;
