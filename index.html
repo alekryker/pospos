@@ -318,6 +318,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--raise2);border-top-color:var(--brand);animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 .demo{padding:5px;text-align:center;font-size:12px;font-weight:700;background:var(--warnSoft);color:var(--warn)}
+@media(max-width:440px){#themeBtn{display:none}}
 </style>
 </head>
 <body>
@@ -332,6 +333,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
   <button class="pill adminOnly" id="printerPill" data-act="goPrinter"><span class="dot"></span><span>เครื่องพิมพ์</span></button>
   <button class="iconBtn" data-act="theme" title="สลับธีม" id="themeBtn"></button>
   <button class="iconBtn" data-act="lock" title="ล็อก / สลับพนักงาน"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
+  <button class="iconBtn" data-act="signOut" title="ออกจากระบบ"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg></button>
 </header>
 
 <main>
@@ -402,6 +404,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="avatar" id="uAvatar">?</div>
         <div style="flex:1;min-width:0"><b id="uName" style="display:block;font-size:16px">-</b><small id="uRole" class="muted">-</small></div>
         <button class="mini" data-act="lock">สลับพนักงาน</button>
+        <button class="mini" style="color:var(--danger)" data-act="signOut">ออกจากระบบ</button>
       </div>
       <div class="card"><h4>กะการขาย</h4><div id="shiftBox"></div></div>
       <div class="card"><h4>การเชื่อมต่อ</h4><div id="connBox"></div></div>
@@ -741,7 +744,7 @@ async function renderSync(){
   $('connBox').innerHTML=`<div class="row"><div class="grow"><b>${DEMO?'โหมดทดลอง (ในเครื่อง)':esc(cfg?new URL(cfg.url).host:'-')}</b>
     <small>${ONLINE?'🟢 ออนไลน์':'🟠 ออฟไลน์ — ขายต่อได้ บิลจะส่งขึ้นเมื่อออนไลน์'} · บิลรอส่ง ${n} · แจ้งเตือนรอส่ง ${q}</small></div></div>
     <div class="field" style="margin:10px 0 8px"><label>รหัสเครื่องนี้ (ขึ้นต้นเลขบิล)</label><input id="devCode" maxlength="3" value="${esc(DEV.code)}" style="text-transform:uppercase"></div>
-    <div class="btns"><button class="btn" data-act="sync">ซิงก์ตอนนี้</button>${DEMO?'':'<button class="btn red" data-act="signOut">ออกจากระบบร้าน</button>'}</div>`;
+    <div class="btns"><button class="btn" data-act="sync">ซิงก์ตอนนี้</button><button class="btn red" data-act="signOut">ออกจากระบบ</button></div>`;
   $('devCode').onchange=e=>{const v=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,3);if(v){DEV.code=v;saveDev()}e.target.value=DEV.code};
 }
 async function syncNow(){
@@ -933,15 +936,15 @@ async function openBill(no){
   if(!s)return;
   const acts=isAdmin()?[{label:'🖨 พิมพ์',cls:'green',onClick:()=>printReceipt(receiptOf(s))}]:[];
   if(isAdmin()&&s.status!=='void'&&!pending)acts.unshift({label:'ยกเลิกบิล',cls:'red',onClick:a=>{a.close();voidBill(s)}});
-  modal({title:'ใบเสร็จ '+esc(s.billNo),body:`${s.status==='void'?`<div class="tag bad" style="margin-bottom:8px">ยกเลิกแล้ว: ${esc(s.voidReason||'')}</div>`:''}${pending?'<div class="tag warn" style="margin-bottom:8px">ยังไม่ได้ส่งขึ้นฐานข้อมูล</div>':''}
+  modal({title:'ใบเสร็จ '+esc(s.billNo),body:`${s.status==='void'?`<div class="tag bad" style="margin-bottom:8px">ยกเลิกแล้ว${s.voidReason?': '+esc(s.voidReason):''}</div>`:''}${pending?'<div class="tag warn" style="margin-bottom:8px">ยังไม่ได้ส่งขึ้นฐานข้อมูล</div>':''}
     <div class="paper" style="width:${Number(DEV.paper)===58?'230px':'300px'}">${receiptHtml(receiptOf(s))}</div>`,actions:acts});
 }
 async function voidBill(s){
-  const v=await form('ยกเลิกบิล '+esc(s.billNo),`<div class="field"><label>เหตุผลที่ยกเลิก</label><textarea id="fR" placeholder="ระบุเหตุผล"></textarea></div><p class="muted">ระบบจะคืนสต๊อกให้อัตโนมัติ</p>`,
-    'ยืนยันยกเลิก',el=>{const r=el.querySelector('#fR').value.trim();return r?{r}:'กรุณาระบุเหตุผล'});if(!v)return;
+  const v=await form('ยกเลิกบิล '+esc(s.billNo),`<div class="field"><label>เหตุผลที่ยกเลิก (ไม่บังคับ)</label><textarea id="fR" placeholder="เว้นว่างได้"></textarea></div><p class="muted">ระบบจะคืนสต๊อกให้อัตโนมัติ</p>`,
+    'ยืนยันยกเลิก',el=>{const r=el.querySelector('#fR').value.trim();return{r}});if(!v)return;
   try{await guard(()=>API.voidSale(s.billNo,v.r,USER.name),'กำลังยกเลิกบิล...')}catch(e){return}
   toast('ยกเลิกบิลและคืนสต๊อกแล้ว','ok');await refreshCloud();
-  notifyTg(`❌ <b>ยกเลิกบิล ${tgEsc(s.billNo)}</b>\nยอด ${fmtN(s.net)} บาท · โดย ${tgEsc(USER.name)}\nเหตุผล: ${tgEsc(v.r)}`);
+  notifyTg(`❌ <b>ยกเลิกบิล ${tgEsc(s.billNo)}</b>\nยอด ${fmtN(s.net)} บาท · โดย ${tgEsc(USER.name)}${v.r?'\nเหตุผล: '+tgEsc(v.r):''}`);
 }
 
 /* ======================= REPORT ======================= */
@@ -1337,7 +1340,8 @@ function bindUI(){
       theme:()=>{DEV.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';saveDev();applyTheme()},
       goPrinter:()=>{setView('menu');setTimeout(()=>$('printerCard').scrollIntoView({behavior:'smooth',block:'start'}),60)},
       sync:async()=>{await syncNow();await refreshCloud();toast(ONLINE?'ซิงก์แล้ว':'ยังออฟไลน์',ONLINE?'ok':'warn')},
-      signOut:async()=>{if(!(await ask('ออกจากระบบร้านในเครื่องนี้?','ต้องใส่อีเมลและรหัสผ่านร้านใหม่เพื่อเข้าใช้','ออกจากระบบ',true)))return;await sb.auth.signOut();location.reload()},
+      signOut:async()=>{if(!(await ask('ออกจากระบบ?',DEMO?'กลับไปหน้าเลือกพนักงาน':'ต้องเข้าสู่ระบบใหม่ (ยูส + PIN หรืออีเมลร้าน) เพื่อใช้งาน','ออกจากระบบ',true)))return;
+        if(DEMO){USER=null;sessionStorage.removeItem(KP+'p3:user');closeCart();showLock();return}signOutDevice()},
       saveShop:saveShopUI,tgSave,tgTest:()=>tgTest(a.dataset.ch||'admin'),tgFind,connectPrinter,testPrint:()=>printReceipt(testReceipt()),drawer:openDrawerManual,adminProducts,adminStaff,dataTools})[a.dataset.act]?.();
   });
   $('q').addEventListener('input',renderGrid);$('discVal').addEventListener('input',renderCart);
