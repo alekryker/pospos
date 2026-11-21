@@ -242,3 +242,52 @@ revoke execute on function pos._create_login(text, text, text, text) from authen
 
 -- สร้างพนักงานจาก SQL Editor (ตั้ง PIN เองก่อนรัน อย่าใส่ PIN จริงไว้ในไฟล์นี้):
 -- select pos._create_login('ยูส', 'ชื่อ', 'CASHIER', 'PIN 6 หลัก');
+-- ===== Telegram 2 กลุ่ม: แอดมิน + พนักงาน (ใช้บอทตัวเดียวกัน) =====
+alter table pos.secrets add column if not exists tg_staff_chat text;
+alter table pos.secrets add column if not exists tg_staff_on boolean default false;
+
+create or replace function pos.tg_status() returns jsonb
+language sql security definer set search_path = pos as $$
+  select jsonb_build_object('on', tg_on, 'chat', tg_chat, 'hasToken', coalesce(tg_token, '') <> '',
+                            'staffOn', coalesce(tg_staff_on, false), 'staffChat', tg_staff_chat)
+  from pos.secrets where id = 1 and pos.is_member();
+$$;
+
+drop function if exists pos.set_telegram(boolean, text, text);
+create or replace function pos.set_telegram(p_on boolean, p_chat text, p_token text default null,
+                                            p_staff_on boolean default null, p_staff_chat text default null) returns jsonb
+language plpgsql security definer set search_path = pos as $$
+begin
+  if not pos.is_member() then raise exception 'not allowed'; end if;
+  update pos.secrets set
+    tg_on = p_on,
+    tg_chat = coalesce(nullif(p_chat, ''), tg_chat),
+    tg_token = case when coalesce(p_token, '') = '' then tg_token else p_token end,
+    tg_staff_on = coalesce(p_staff_on, tg_staff_on),
+    tg_staff_chat = case when p_staff_chat is null then tg_staff_chat else nullif(p_staff_chat, '') end
+  where id = 1;
+  return pos.tg_status();
+end $$;
+
+drop function if exists pos.notify(text);
+create or replace function pos.notify(msg text, ch text default 'admin') returns jsonb
+language plpgsql security definer set search_path = pos, extensions as $$
+declare s pos.secrets; rid bigint; target text; enabled boolean;
+begin
+  if not pos.is_member() then raise exception 'not allowed'; end if;
+  select * into s from pos.secrets where id = 1;
+  if ch = 'staff' then target := s.tg_staff_chat; enabled := coalesce(s.tg_staff_on, false);
+  else target := s.tg_chat; enabled := coalesce(s.tg_on, false); end if;
+  if not enabled or coalesce(s.tg_token, '') = '' or coalesce(target, '') = '' then
+    return jsonb_build_object('ok', false, 'reason', 'off');
+  end if;
+  select net.http_post(
+    url := 'https://api.telegram.org/bot' || s.tg_token || '/sendMessage',
+    body := jsonb_build_object('chat_id', target, 'text', msg, 'parse_mode', 'HTML', 'disable_web_page_preview', true)
+  ) into rid;
+  return jsonb_build_object('ok', true, 'request_id', rid);
+end $$;
+
+revoke execute on all functions in schema pos from public, anon;
+grant execute on all functions in schema pos to authenticated;
+revoke execute on function pos._create_login(text, text, text, text) from authenticated;

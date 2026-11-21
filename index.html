@@ -424,12 +424,22 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="field"><label>พร้อมเพย์ (เบอร์โทร / เลขบัตรประชาชน)</label><input id="ppId" inputmode="numeric" placeholder="0646283140"><small>QR ล็อกยอดตามบิล และพิมพ์ลงใบเสร็จเมื่อชำระด้วย QR</small></div>
         <button class="btn green block" data-act="saveShop">บันทึก</button>
       </div>
-      <div class="card adminOnly">
-        <h4>แจ้งเตือน Telegram (ส่งจากฐานข้อมูล)</h4>
-        <div class="switch" style="padding-top:0"><div><b>แจ้งเมื่อขาย ยกเลิกบิล ปิดกะ สต๊อกใกล้หมด</b><small id="tgInfo">-</small></div><label class="tg"><input type="checkbox" id="tgOn"><span></span></label></div>
-        <div class="field"><label>Bot Token</label><input id="tgToken" type="password" autocomplete="off" placeholder="123456:ABC-..."><small id="tgTokenHint">Token เก็บในฐานข้อมูล หน้าเว็บอ่านกลับไม่ได้</small></div>
-        <div class="field"><label>Chat ID</label><input id="tgChat" placeholder="-100..."></div>
-        <div class="btns"><button class="btn green" data-act="tgSave">บันทึก</button><button class="btn" data-act="tgTest">ส่งทดสอบ</button></div>
+      <div class="card adminOnly" id="tgCard">
+        <h4>แจ้งเตือน Telegram<span class="sp"></span><span class="tag" id="tgInfo">-</span></h4>
+        <div class="field"><label>Bot Token (ใช้บอทตัวเดียวกันทั้ง 2 กลุ่ม)</label><input id="tgToken" type="password" autocomplete="off" placeholder="123456:ABC-..."><small>เก็บในฐานข้อมูล หน้าเว็บอ่านกลับไม่ได้ · สร้างบอทได้ที่ @BotFather</small></div>
+        <button class="btn block" data-act="tgFind" style="margin-bottom:12px">🔍 หากลุ่มที่บอทอยู่ (ดึง Chat ID ให้อัตโนมัติ)</button>
+        <div class="card soft" style="margin-bottom:10px">
+          <div class="switch" style="padding-top:0"><div><b>👑 กลุ่มแอดมิน</b><small>ทุกบิลขาย · ยกเลิกบิล · ปิดกะ + สรุปยอดรายพนักงาน</small></div><label class="tg"><input type="checkbox" id="tgOn"><span></span></label></div>
+          <div class="field"><label>Chat ID กลุ่มแอดมิน</label><input id="tgChat" placeholder="-100..."></div>
+          <button class="btn block" data-act="tgTest" data-ch="admin">ส่งทดสอบกลุ่มแอดมิน</button>
+        </div>
+        <div class="card soft" style="margin-bottom:12px">
+          <div class="switch" style="padding-top:0"><div><b>👥 กลุ่มพนักงาน</b><small>บิลที่พนักงานขาย · เปิด/ปิดกะ (ไม่มีต้นทุน/กำไร)</small></div><label class="tg"><input type="checkbox" id="tgStaffOn"><span></span></label></div>
+          <div class="field"><label>Chat ID กลุ่มพนักงาน</label><input id="tgStaffChat" placeholder="-100..."></div>
+          <button class="btn block" data-act="tgTest" data-ch="staff">ส่งทดสอบกลุ่มพนักงาน</button>
+        </div>
+        <button class="btn green block" data-act="tgSave">บันทึกการตั้งค่า Telegram</button>
+        <p class="muted" style="font-size:12px;margin-top:10px;line-height:1.7">วิธีตั้งค่า: 1) เพิ่มบอทเข้ากลุ่ม Telegram ทั้ง 2 กลุ่ม 2) พิมพ์ข้อความอะไรก็ได้ในแต่ละกลุ่ม 3) ใส่ Token แล้วกด "หากลุ่มที่บอทอยู่" เลือกกลุ่ม 4) กดบันทึก</p>
       </div>
       <div class="card adminOnly">
         <h4>จัดการร้าน</h4>
@@ -521,9 +531,9 @@ const LocalAPI={
   async currentShift(){return local.get('shift',null)},
   async openShift(sh){if(local.get('shift',null))throw new Error('มีกะเปิดอยู่แล้ว');local.set('shift',sh)},
   async closeShift(r){local.del('shift');await idbPut('dshifts',r)},
-  async tgStatus(){return local.get('tg',{on:false,chat:'',hasToken:false})},
-  async setTelegram(on,chat,token){const t=local.get('tg',{});const n={on,chat:chat||t.chat||'',hasToken:!!(token||t.hasToken)};local.set('tg',n);return n},
-  async notify(msg){console.log('[telegram ทดลอง]\n'+msg);return{ok:true}},
+  async tgStatus(){return local.get('tg',{on:false,chat:'',hasToken:false,staffOn:false,staffChat:''})},
+  async setTelegram(on,chat,token,staffOn,staffChat){const t=local.get('tg',{});const n={on,chat:chat||t.chat||'',hasToken:!!(token||t.hasToken),staffOn:!!staffOn,staffChat:staffChat||''};local.set('tg',n);return n},
+  async notify(msg,ch='admin'){console.log('[telegram ทดลอง → '+ch+']\n'+msg);(window.TG_LOG=window.TG_LOG||[]).push({ch,msg});return{ok:true}},
   async tgCheck(){return{status:200}},
   async uploadSales(){},
   subscribe(){}
@@ -565,8 +575,8 @@ const CloudAPI={
   async closeShift(r){chk(await sb.from('shifts').update({closed_at:iso(r.closedAt),closed_by:r.closedBy,expected:r.expected,actual:r.actual,diff:r.diff,note:r.note,
     summary:{bills:r.bills,sales:r.sales,cash:r.cash,qr:r.qr,transfer:r.transfer,card:r.card}}).eq('id',r.id))},
   async tgStatus(){return chk(await sb.rpc('tg_status'))||{}},
-  async setTelegram(on,chat,token){return chk(await sb.rpc('set_telegram',{p_on:on,p_chat:chat||'',p_token:token||null}))},
-  async notify(msg){return chk(await sb.rpc('notify',{msg}))},
+  async setTelegram(on,chat,token,staffOn,staffChat){return chk(await sb.rpc('set_telegram',{p_on:on,p_chat:chat||'',p_token:token||null,p_staff_on:!!staffOn,p_staff_chat:staffChat||''}))},
+  async notify(msg,ch='admin'){return chk(await sb.rpc('notify',{msg,ch}))},
   async tgCheck(rid){return chk(await sb.rpc('tg_check',{rid}))},
   async uploadSales(list){for(let i=0;i<list.length;i+=300)chk(await sb.from('sales').upsert(list.slice(i,i+300).map(sale2db),{onConflict:'bill_no',ignoreDuplicates:true}))},
   subscribe(cb){sb.channel('pos247').on('postgres_changes',{event:'*',schema:SB_SCHEMA},p=>cb(p.table)).subscribe()}
@@ -738,14 +748,14 @@ async function syncNow(){
     const box=(await idbAll('outbox')).sort((a,b)=>a.ts-b.ts);
     for(const s of box){try{await API.createSale(s);await idbDel('outbox',s.billNo);setOnline(true)}catch(e){if(isNetErr(e)){setOnline(false);break}console.warn('sync sale',e);toast('ส่งบิล '+s.billNo+' ไม่สำเร็จ: '+errMsg(e),'err');break}}
     let q=local.get('tgq',[]);
-    while(q.length){try{await API.notify(q[0])}catch(e){if(isNetErr(e))break;console.warn('notify',e)}q.shift();local.set('tgq',q)}
+    while(q.length){const it=typeof q[0]==='string'?{m:q[0],c:'admin'}:q[0];try{await API.notify(it.m,it.c)}catch(e){if(isNetErr(e))break;console.warn('notify',e)}q.shift();local.set('tgq',q)}
   }finally{SYNCING=false;renderSync()}
 }
 window.addEventListener('online',()=>{setOnline(true);syncNow();refreshCloud()});
 window.addEventListener('offline',()=>setOnline(false));
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&USER){syncNow();refreshCloud()}});
 setInterval(()=>{if(USER)syncNow()},30000);
-function notifyTg(msg){const q=local.get('tgq',[]);q.push(msg);local.set('tgq',q.slice(-200));syncNow()}
+function notifyTg(msg,ch='admin'){const q=local.get('tgq',[]);q.push({m:msg,c:ch});local.set('tgq',q.slice(-200));syncNow()}
 
 /* ======================= PRODUCTS ======================= */
 const cats=()=>[...new Set(PRODUCTS.filter(p=>p.active!==false).sort((a,b)=>(a.order||0)-(b.order||0)).map(p=>p.category).filter(Boolean))];
@@ -813,18 +823,19 @@ function renderShift(){
     <button class="btn red block" style="margin-top:10px" data-act="shift">ปิดกะ / นับเงิน</button>`:`<div class="muted" style="margin-bottom:10px">ต้องเปิดกะก่อนจึงจะขายได้ (กะเดียวใช้ร่วมทุกเครื่อง)</div><button class="btn green block" data-act="shift">เปิดกะ</button>`;
 }
 async function shiftStats(sh){const all=await allSales(dayKey(sh.openedAt),dayKey(Date.now()));const s=all.filter(x=>x.shiftId===sh.id&&x.status!=='void');
-  const by=m=>s.filter(x=>x.payment===m).reduce((a,x)=>a+x.net,0);return{bills:s.length,sales:s.reduce((a,x)=>a+x.net,0),cash:by('เงินสด'),qr:by('QR'),transfer:by('โอน'),card:by('บัตร')}}
+  const by=m=>s.filter(x=>x.payment===m).reduce((a,x)=>a+x.net,0);const per={};s.forEach(x=>{const k=x.staffId||x.staff;per[k]=per[k]||{name:x.staff,bills:0,net:0,cash:0,qr:0};const p=per[k];p.bills++;p.net+=x.net;if(x.payment==='เงินสด')p.cash+=x.net;if(x.payment==='QR')p.qr+=x.net});
+  return{bills:s.length,sales:s.reduce((a,x)=>a+x.net,0),cash:by('เงินสด'),qr:by('QR'),transfer:by('โอน'),card:by('บัตร'),byStaff:Object.values(per).sort((a,b)=>b.net-a.net)}}
 async function shiftDialog(){
   if(!USER)return;
   try{SHIFT=await API.currentShift();cacheSave();renderShift()}catch(e){}
   if(!SHIFT){const v=await form('เปิดกะ',`<div class="field"><label>เงินตั้งต้นในลิ้นชัก (บาท)</label><input id="fOpen" type="number" inputmode="decimal" min="0" value="0"></div>`,
       'เปิดกะ',el=>{const n=Number(el.querySelector('#fOpen').value);return isNaN(n)||n<0?'กรอกจำนวนเงินให้ถูกต้อง':{n}});
     if(!v)return;const sh={id:'SH'+Date.now().toString(36).toUpperCase(),openedAt:Date.now(),by:USER.name,openingCash:v.n};
-    try{await guard(()=>API.openShift(sh),'กำลังเปิดกะ...');SHIFT=sh;cacheSave();renderShift();toast('เปิดกะแล้ว','ok')}catch(e){refreshCloud()}return}
+    try{await guard(()=>API.openShift(sh),'กำลังเปิดกะ...');SHIFT=sh;cacheSave();renderShift();toast('เปิดกะแล้ว','ok');notifyTg(`🔓 <b>เปิดกะ</b> · ${tgEsc(sh.by)}\nเงินตั้งต้น ${fmtN(sh.openingCash)} บาท\n🕒 ${fmtTime(sh.openedAt)}`,'staff')}catch(e){refreshCloud()}return}
   await syncNow();
   const st=await guard(()=>shiftStats(SHIFT),'กำลังสรุปยอด...').catch(()=>null);if(!st)return;const exp=SHIFT.openingCash+st.cash;
   const v=await form('ปิดกะ',`<div class="card soft"><div class="sum"><span>เปิดกะโดย</span><b>${esc(SHIFT.by)}</b></div><div class="sum"><span>เปิดเมื่อ</span><b>${fmtTime(SHIFT.openedAt)}</b></div>
-      <div class="sum"><span>ยอดขาย (${st.bills} บิล)</span><b>${money(st.sales)}</b></div><div class="sum"><span>เงินตั้งต้น + เงินสดที่ขายได้</span><b>${money(exp)}</b></div></div>
+      <div class="sum"><span>ยอดขาย (${st.bills} บิล)</span><b>${money(st.sales)}</b></div><div class="sum"><span>เงินตั้งต้น + เงินสดที่ขายได้</span><b>${money(exp)}</b></div>${(st.byStaff||[]).map(p=>`<div class="sum"><span>· ${esc(p.name)} (${p.bills} บิล)</span><b>${money(p.net)}</b></div>`).join('')}</div>
     <div class="field"><label>นับเงินสดจริงในลิ้นชัก (บาท)</label><input id="fAct" type="number" inputmode="decimal" min="0" placeholder="กรอกยอดเงินจริง"></div>
     <div class="field"><label>หมายเหตุ</label><textarea id="fNote" placeholder="ถ้ามี"></textarea></div>`,
     'ปิดกะ',el=>{const a=el.querySelector('#fAct').value;return a===''?'กรุณากรอกเงินสดจริง':{actual:Number(a),note:el.querySelector('#fNote').value}});
@@ -833,7 +844,8 @@ async function shiftDialog(){
   try{await guard(()=>API.closeShift(r),'กำลังปิดกะ...')}catch(e){return}
   SHIFT=null;cacheSave();renderShift();
   toast(r.diff===0?'ปิดกะแล้ว · เงินพอดี':`ปิดกะแล้ว · ${r.diff>0?'เกิน':'ขาด'} ${money(Math.abs(r.diff))}`,'ok');
-  notifyTg(`🔒 <b>ปิดกะ</b> · ${tgEsc(r.closedBy)}\nยอดขาย ${fmtN(r.sales)} บาท (${r.bills} บิล)\n💵 ${fmtN(r.cash)} · 📱 ${fmtN(r.qr)} · 🏦 ${fmtN(r.transfer)} · 💳 ${fmtN(r.card)}\nควรมี ${fmtN(r.expected)} · นับได้ ${fmtN(r.actual)} · ${r.diff===0?'พอดี':(r.diff>0?'เกิน ':'ขาด ')+fmtN(Math.abs(r.diff))}${r.note?'\n📝 '+tgEsc(r.note):''}`);
+  notifyTg(`🔒 <b>ปิดกะ</b> · ${tgEsc(r.closedBy)}\nยอดขาย ${fmtN(r.sales)} บาท (${r.bills} บิล)\n💵 ${fmtN(r.cash)} · 📱 ${fmtN(r.qr)} · 🏦 ${fmtN(r.transfer)} · 💳 ${fmtN(r.card)}\nควรมี ${fmtN(r.expected)} · นับได้ ${fmtN(r.actual)} · ${r.diff===0?'พอดี':(r.diff>0?'เกิน ':'ขาด ')+fmtN(Math.abs(r.diff))}${r.note?'\n📝 '+tgEsc(r.note):''}${(st.byStaff||[]).length?'\n\n<b>👥 ยอดรายพนักงาน</b>\n'+st.byStaff.map((p,i)=>`${i+1}. ${tgEsc(p.name)} — ${fmtN(p.net)} บาท (${p.bills} บิล · 📱 ${fmtN(p.qr)} · 💵 ${fmtN(p.cash)})`).join('\n'):''}`,'admin');
+  notifyTg(`🔒 <b>ปิดกะ</b> · ${tgEsc(r.closedBy)}\nยอดขายกะนี้ ${fmtN(r.sales)} บาท (${r.bills} บิล)\n🕒 ${fmtTime(r.closedAt)}`,'staff');
 }
 
 /* ======================= PAYMENT ======================= */
@@ -883,7 +895,7 @@ async function checkout(){
     resetBill();renderChips();showDone(s);
     if(payment==='เงินสด'||payment==='QR')autoDrawer();
     if(isAdmin()&&PRINTER.connected&&DEV.autoPrint)setTimeout(()=>printReceipt(receiptOf(s)),250);
-    notifyTg(tgSale(s));lowStockAlert(s);
+    notifyTg(tgSale(s),'admin');if(USER.role!=='ADMIN')notifyTg(tgSale(s),'staff');
   }catch(e){toast('บันทึกบิลไม่สำเร็จ: '+errMsg(e),'err')}finally{BUSY=false;renderCart();renderSync()}
 }
 function showDone(s){modal({title:'',closable:false,body:`<div class="done"><div class="ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
@@ -1041,17 +1053,34 @@ async function saveShopUI(){
   const d={...SHOP,shop:$('rShop').value.trim(),head:$('rHead').value,foot:$('rFoot').value.trim(),promptpay:$('ppId').value.replace(/\D/g,'')};
   try{await guard(()=>API.saveShop(d),'กำลังบันทึก...');SHOP=d;cacheSave();loadSettingsUI();toast('บันทึกแล้ว ทุกเครื่องจะเห็นค่านี้','ok')}catch(e){}
 }
-async function loadTgUI(){try{const s=await API.tgStatus();$('tgOn').checked=!!s.on;$('tgChat').value=s.chat||'';
-  $('tgInfo').textContent=s.hasToken?(s.on?'เปิดอยู่ · ตั้ง Token แล้ว':'ปิดอยู่ · ตั้ง Token แล้ว'):'ยังไม่ได้ตั้ง Token';
+async function loadTgUI(){try{const s=await API.tgStatus();$('tgOn').checked=!!s.on;$('tgChat').value=s.chat||'';$('tgStaffOn').checked=!!s.staffOn;$('tgStaffChat').value=s.staffChat||'';
+  $('tgInfo').textContent=s.hasToken?`ตั้ง Token แล้ว · แอดมิน ${s.on?'เปิด':'ปิด'} · พนักงาน ${s.staffOn?'เปิด':'ปิด'}`:'ยังไม่ได้ตั้ง Token';
   $('tgToken').placeholder=s.hasToken?'ตั้งไว้แล้ว (ใส่ใหม่เพื่อเปลี่ยน)':'123456:ABC-...'}catch(e){$('tgInfo').textContent='โหลดสถานะไม่ได้ (ออฟไลน์?)'}}
-async function tgSave(){try{await guard(()=>API.setTelegram($('tgOn').checked,$('tgChat').value.trim(),$('tgToken').value.trim()),'กำลังบันทึก...');$('tgToken').value='';toast('บันทึก Telegram แล้ว','ok');loadTgUI()}catch(e){}}
-async function tgTest(){
-  try{const r=await guard(()=>API.notify(`✅ ทดสอบแจ้งเตือนจาก ${tgEsc(shop().shop||'POS')} · เครื่อง ${DEV.code}`),'กำลังส่ง...');
-    if(!r||!r.ok){toast(r&&r.reason==='off'?'ยังไม่ได้เปิดแจ้งเตือน หรือยังไม่ได้ตั้ง Token / Chat ID':'ส่งไม่สำเร็จ','warn');return}
+async function tgSave(){try{await guard(()=>API.setTelegram($('tgOn').checked,$('tgChat').value.trim(),$('tgToken').value.trim(),$('tgStaffOn').checked,$('tgStaffChat').value.trim()),'กำลังบันทึก...');$('tgToken').value='';toast('บันทึก Telegram แล้ว','ok');loadTgUI()}catch(e){}}
+async function tgTest(ch='admin'){
+  const label=ch==='staff'?'กลุ่มพนักงาน':'กลุ่มแอดมิน';
+  try{const r=await guard(()=>API.notify(`✅ ทดสอบแจ้งเตือน${label} · ${tgEsc(shop().shop||'POS')} · เครื่อง ${DEV.code}`,ch),'กำลังส่ง...');
+    if(!r||!r.ok){toast(r&&r.reason==='off'?`${label}ยังไม่เปิด หรือยังไม่ได้ตั้ง Token / Chat ID (กดบันทึกก่อน)`:'ส่งไม่สำเร็จ','warn');return}
     if(!r.request_id){toast('ส่งแล้ว ตรวจสอบใน Telegram','ok');return}
     loading(true,'กำลังตรวจผล...');let c={};for(let i=0;i<8&&!c.status;i++){await sleep(800);c=await API.tgCheck(r.request_id)}loading(false);
-    if(c.status===200)toast('ส่งสำเร็จ ตรวจสอบใน Telegram','ok');else toast('Telegram ตอบกลับ: '+(c.body||c.error||'ไม่ทราบผล'),'err');
+    if(c.status===200)toast(`ส่งเข้า${label}สำเร็จ`,'ok');else toast('Telegram ตอบกลับ: '+(c.body||c.error||'ไม่ทราบผล'),'err');
   }catch(e){loading(false)}
+}
+async function tgFind(){
+  const tok=$('tgToken').value.trim();if(!tok){toast('วาง Bot Token ในช่องก่อน แล้วกดอีกครั้ง','warn');$('tgToken').focus();return}
+  let chats=[];
+  try{loading(true,'กำลังค้นหากลุ่ม...');const r=await fetch(`https://api.telegram.org/bot${encodeURIComponent(tok).replace('%3A',':')}/getUpdates`);const j=await r.json();loading(false);
+    if(!j.ok)throw new Error(j.description||'Token ไม่ถูกต้อง');
+    const m=new Map();(j.result||[]).forEach(u=>{const c=(u.message||u.edited_message||u.channel_post||u.my_chat_member||{}).chat;if(c&&!m.has(c.id))m.set(c.id,{id:String(c.id),title:c.title||[c.first_name,c.last_name].filter(Boolean).join(' ')||c.username||'แชท',type:c.type})});
+    chats=[...m.values()];
+  }catch(e){loading(false);toast('ค้นหาไม่ได้: '+errMsg(e),'err');return}
+  if(!chats.length){modal({title:'ยังไม่พบกลุ่ม',body:'<p class="muted">เพิ่มบอทเข้ากลุ่ม แล้วพิมพ์ข้อความอะไรก็ได้ในกลุ่ม (หรือ /start) จากนั้นกดค้นหาอีกครั้ง</p>',actions:[{label:'ตกลง',cls:'green',onClick:a=>a.close()}]});return}
+  modal({title:'เลือกกลุ่ม',body:chats.map(c=>`<div class="row"><div class="grow"><b>${esc(c.title)}</b><small>${esc(c.type)} · ${esc(c.id)}</small></div>
+      <button class="mini" data-pick-ch="admin" data-id="${esc(c.id)}">แอดมิน</button><button class="mini green" data-pick-ch="staff" data-id="${esc(c.id)}">พนักงาน</button></div>`).join(''),
+    actions:[{label:'เสร็จ',cls:'green',onClick:a=>a.close()}],
+    onOpen:a=>a.el.addEventListener('click',e=>{const b=e.target.closest('[data-pick-ch]');if(!b)return;
+      if(b.dataset.pickCh==='admin'){$('tgChat').value=b.dataset.id;$('tgOn').checked=true}else{$('tgStaffChat').value=b.dataset.id;$('tgStaffOn').checked=true}
+      toast(`ตั้งเป็นกลุ่ม${b.dataset.pickCh==='admin'?'แอดมิน':'พนักงาน'}แล้ว — อย่าลืมกดบันทึก`,'ok')})});
 }
 const tgEsc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const fmtN=n=>Math.round(Number(n)||0).toLocaleString('en-US');
@@ -1289,7 +1318,7 @@ function bindUI(){
       goPrinter:()=>{setView('menu');setTimeout(()=>$('printerCard').scrollIntoView({behavior:'smooth',block:'start'}),60)},
       sync:async()=>{await syncNow();await refreshCloud();toast(ONLINE?'ซิงก์แล้ว':'ยังออฟไลน์',ONLINE?'ok':'warn')},
       signOut:async()=>{if(!(await ask('ออกจากระบบร้านในเครื่องนี้?','ต้องใส่อีเมลและรหัสผ่านร้านใหม่เพื่อเข้าใช้','ออกจากระบบ',true)))return;await sb.auth.signOut();location.reload()},
-      saveShop:saveShopUI,tgSave,tgTest,connectPrinter,testPrint:()=>printReceipt(testReceipt()),drawer:openDrawerManual,adminProducts,adminStaff,dataTools})[a.dataset.act]?.();
+      saveShop:saveShopUI,tgSave,tgTest:()=>tgTest(a.dataset.ch||'admin'),tgFind,connectPrinter,testPrint:()=>printReceipt(testReceipt()),drawer:openDrawerManual,adminProducts,adminStaff,dataTools})[a.dataset.act]?.();
   });
   $('q').addEventListener('input',renderGrid);$('discVal').addEventListener('input',renderCart);
   $('pAuto').addEventListener('change',e=>{DEV.autoPrint=e.target.checked;saveDev()});
