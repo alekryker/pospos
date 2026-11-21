@@ -60,6 +60,8 @@ input::placeholder,textarea::placeholder{color:var(--mute)}
 .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;letter-spacing:-.3px;min-width:0}
 .logo i{flex:0 0 auto;width:36px;height:36px;border-radius:12px;background:var(--grad);color:var(--brandInk);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:17px;box-shadow:0 6px 16px color-mix(in srgb,var(--brand) 35%,transparent)}
 .logo>span{min-width:0;line-height:1.2}.logo>span>span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brandImg{height:38px;width:auto;border-radius:10px;flex:0 0 auto;box-shadow:0 4px 14px rgba(220,31,20,.25)}
+.brandImg.big{height:72px;border-radius:16px;margin:0 auto}
 .logo small{display:block;font-size:11.5px;font-weight:600;color:var(--sub);letter-spacing:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top .sp{flex:1}
 .pill{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:12.5px;font-weight:600;color:var(--sub);white-space:nowrap;max-width:34vw;overflow:hidden;text-overflow:ellipsis}
@@ -323,7 +325,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
 <div class="gate hidden" id="gate"><div class="gbox" id="gbox"></div></div>
 
 <header class="top">
-  <div class="logo"><i>฿</i><span><span id="shopTitle">POS</span><small id="staffLine">-</small></span></div>
+  <div class="logo"><img class="brandImg" src="icons/logo-wide.png" alt="SLAY"><span><span id="shopTitle">POS</span><small id="staffLine">-</small></span></div>
   <div class="sp"></div>
   <button class="pill hidden" id="syncPill" data-act="sync"><span class="dot"></span><span>ซิงก์</span></button>
   <button class="pill" id="shiftPill" data-act="shift"><span class="dot"></span><span>กะ</span></button>
@@ -618,7 +620,7 @@ try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if
 
 /* ======================= CONNECT / LOGIN ======================= */
 function gate(html){$('gbox').innerHTML=html;$('gate').classList.remove('hidden')}
-const LOGO=()=>`<div class="logo"><i>฿</i>${esc(shop().shop||'POS')}</div>`;
+const LOGO=()=>`<div class="logo"><img class="brandImg big" src="icons/logo-wide.png" alt="SLAY"></div>`;
 function sbConfig(){const c=local.get('sb',null);return SB_URL&&SB_KEY?{url:SB_URL,key:SB_KEY}:c}
 function showConnect(msg=''){
   gate(`${LOGO()}<p class="lead">เชื่อมต่อฐานข้อมูลร้าน (Supabase)</p>

@@ -1,6 +1,6 @@
 /* POS247 service worker — เปิดแอปได้แม้ออฟไลน์ (ข้อมูลร้านซิงก์แยกต่างหาก) */
-const CACHE = 'pos247-v1';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+const CACHE = 'pos247-v2';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/logo-wide.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -1,6 +1,6 @@
 {
-  "name": "POS ร้าน",
-  "short_name": "POS",
+  "name": "SLAY POS",
+  "short_name": "SLAY POS",
   "description": "ระบบขายหน้าร้าน",
   "id": "/pospos/",
   "start_url": "/pospos/",
@@ -8,7 +8,7 @@
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f5f5f2",
-  "theme_color": "#10b981",
+  "theme_color": "#dc1f14",
   "lang": "th",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
