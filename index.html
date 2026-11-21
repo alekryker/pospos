@@ -520,6 +520,7 @@ const LocalAPI={
   async replaceProducts(l){local.set('products',l)},
   async deleteProduct(id){local.set('products',local.get('products',[]).filter(p=>p.id!==id))},
   async upsertStaff(s){const l=local.get('staff',[]),i=l.findIndex(x=>x.id===s.id);if(i>-1)l[i]=s;else l.push(s);local.set('staff',l)},
+  async deleteStaff(id){local.set('staff',local.get('staff',[]).filter(x=>x.id!==id))},
   async saveShop(d){local.set('shop',d)},
   async createSale(s){if(await idbGet('dsales',s.billNo))return;await idbPut('dsales',{...s,status:'ok'});
     const ps=local.get('products',[]);s.items.forEach(i=>{const p=ps.find(x=>x.id===i.id);if(p)p.stock=Number(p.stock)-i.qty});local.set('products',ps)},
@@ -563,6 +564,7 @@ const CloudAPI={
   async upsertStaff(s){chk(await sb.from('staff').upsert(s2db(s)))},
   async createStaffLogin(u,name,role,pin){return chk(await sb.rpc('create_staff_login',{p_username:u,p_name:name,p_role:role,p_pin:pin}))},
   async setStaffPin(id,pin){return chk(await sb.rpc('set_staff_pin',{p_staff:id,p_pin:pin}))},
+  async deleteStaff(id){return chk(await sb.rpc('delete_staff',{p_staff:id}))},
   async setStaffActive(id,on){return chk(await sb.rpc('set_staff_active',{p_staff:id,p_active:on}))},
   async saveShop(d){chk(await sb.from('settings').upsert({id:1,data:d,updated_at:iso(Date.now())}))},
   async createSale(s){return chk(await sb.rpc('create_sale',{s}))},
@@ -607,7 +609,7 @@ function modal({title='',body='',actions=[],onOpen,closable=true}){
   if(closable){m.querySelector('[data-x]').onclick=()=>api.close();m.addEventListener('click',e=>{if(e.target===m)api.close()})}
   document.body.appendChild(m);requestAnimationFrame(()=>m.classList.add('on'));onOpen&&onOpen(api);return api;
 }
-function ask(title,text='',ok='ยืนยัน',danger=false){return new Promise(res=>{let d=false;const m=modal({title,body:`<p class="muted" style="font-size:14.5px">${esc(text)}</p>`,
+function ask(title,text='',ok='ยืนยัน',danger=false){return new Promise(res=>{let d=false;const m=modal({title,body:`<p class="muted" style="font-size:14.5px;white-space:pre-line;word-break:break-all">${esc(text)}</p>`,
   actions:[{label:'ยกเลิก',onClick:a=>{d=true;a.close();res(false)}},{label:ok,cls:danger?'red':'green',onClick:a=>{d=true;a.close();res(true)}}]});m.onClose=()=>{if(!d)res(false)}})}
 /* collect(el): object = ผ่าน, string = ข้อความผิดพลาด */
 function form(title,html,ok,collect,extra){return new Promise(res=>{let d=false;const m=modal({title,body:html,
@@ -1018,7 +1020,8 @@ function adminStaff(){
   STAFF_MODAL=modal({title:'พนักงาน',body:'<div id="stList"></div>',actions:[{label:'＋ เพิ่มพนักงาน',cls:'green',onClick:()=>editStaff(null)}],
     onOpen:a=>{a.redraw=()=>{a.el.querySelector('#stList').innerHTML=STAFF.map(s=>`<div class="row"><span class="avatar" style="width:42px;height:42px;font-size:16px;border-radius:13px">${esc(s.name.charAt(0).toUpperCase())}</span>
       <div class="grow"><b>${esc(s.name)} <span class="tag ${s.role==='ADMIN'?'warn':''}">${s.role==='ADMIN'?'แอดมิน':'แคชเชียร์'}</span> ${s.active?'':'<span class="tag bad">ปิด</span>'}</b><small>${s.username?'ยูส: <b>'+esc(s.username)+'</b>':'เข้าด้วย PIN จากเครื่องร้าน'}</small></div>
-      <button class="mini green" data-es="${esc(s.id)}">แก้</button></div>`).join('')};a.redraw();a.el.addEventListener('click',e=>{const b=e.target.closest('[data-es]');if(b)editStaff(b.dataset.es)})}});
+      <button class="mini green" data-es="${esc(s.id)}">แก้</button>${s.id===USER?.id?'':`<button class="mini" style="color:var(--danger)" data-ds="${esc(s.id)}">ลบ</button>`}</div>`).join('')};a.redraw();
+      a.el.addEventListener('click',e=>{const b=e.target.closest('[data-es]');if(b)editStaff(b.dataset.es);const d=e.target.closest('[data-ds]');if(d)deleteStaff(d.dataset.ds)})}});
   STAFF_MODAL.onClose=()=>{STAFF_MODAL=null};
 }
 async function editStaff(id){
@@ -1048,6 +1051,16 @@ async function editStaff(id){
   STAFF_MODAL&&STAFF_MODAL.redraw();toast('บันทึกพนักงานแล้ว','ok');
 }
 
+async function deleteStaff(id){
+  const s=STAFF.find(x=>x.id===id);if(!s)return;
+  if(id===USER?.id){toast('ลบบัญชีที่กำลังใช้อยู่ไม่ได้','warn');return}
+  if(s.role==='ADMIN'&&s.active&&!STAFF.some(x=>x.role==='ADMIN'&&x.active&&x.id!==id)){toast('ต้องมีแอดมินที่ใช้งานอยู่อย่างน้อย 1 คน','warn');return}
+  if(!await ask(`ลบพนักงาน "${s.name}"?`,`${s.username?'ยูส '+s.username+' จะเข้าระบบไม่ได้อีก · ':''}ประวัติการขายเดิมยังอยู่ครบ · ลบแล้วกู้คืนไม่ได้`,'ลบพนักงาน',true))return;
+  try{await guard(()=>API.deleteStaff(id),'กำลังลบ...')}catch(e){return}
+  STAFF=STAFF.filter(x=>x.id!==id);await refreshCloud();if(DEMO){applyData(await API.loadAll())}
+  STAFF_MODAL&&STAFF_MODAL.redraw();toast('ลบพนักงานแล้ว','ok');
+}
+
 /* ======================= SHOP SETTINGS / TELEGRAM ======================= */
 async function saveShopUI(){
   const d={...SHOP,shop:$('rShop').value.trim(),head:$('rHead').value,foot:$('rFoot').value.trim(),promptpay:$('ppId').value.replace(/\D/g,'')};
@@ -1069,7 +1082,14 @@ async function tgTest(ch='admin'){
 async function tgFind(){
   const tok=$('tgToken').value.trim();if(!tok){toast('วาง Bot Token ในช่องก่อน แล้วกดอีกครั้ง','warn');$('tgToken').focus();return}
   let chats=[];
-  try{loading(true,'กำลังค้นหากลุ่ม...');const r=await fetch(`https://api.telegram.org/bot${encodeURIComponent(tok).replace('%3A',':')}/getUpdates`);const j=await r.json();loading(false);
+  const tg=m=>fetch(`https://api.telegram.org/bot${encodeURIComponent(tok).replace('%3A',':')}/${m}`).then(r=>r.json());
+  try{loading(true,'กำลังค้นหากลุ่ม...');let j=await tg('getUpdates');loading(false);
+    if(!j.ok&&j.error_code===409){ // บอทมี webhook ค้างอยู่ (เช่นจากระบบเก่า) → getUpdates ใช้ไม่ได้
+      const w=await tg('getWebhookInfo');const url=(w.result&&w.result.url)||'';
+      if(!await ask('บอทนี้ผูก webhook ไว้กับระบบอื่น',`ปลายทาง: ${url||'-'}\n\nต้องปลด webhook ก่อนถึงจะค้นหากลุ่มได้ ถ้าระบบปลายทางนี้ยังใช้งานอยู่ (เช่นรับคำสั่งจากแชท) มันจะหยุดรับข้อความ · การส่งแจ้งเตือนของ POS ไม่ต้องใช้ webhook\n\nถ้าไม่อยากปลด ให้พิมพ์ Chat ID ลงช่องเองแทน`,'ปลด webhook แล้วค้นหา',true))return;
+      loading(true,'กำลังค้นหากลุ่ม...');const d=await tg('deleteWebhook');if(!d.ok){loading(false);throw new Error(d.description||'ปลด webhook ไม่สำเร็จ')}
+      j=await tg('getUpdates');loading(false);
+    }
     if(!j.ok)throw new Error(j.description||'Token ไม่ถูกต้อง');
     const m=new Map();(j.result||[]).forEach(u=>{const c=(u.message||u.edited_message||u.channel_post||u.my_chat_member||{}).chat;if(c&&!m.has(c.id))m.set(c.id,{id:String(c.id),title:c.title||[c.first_name,c.last_name].filter(Boolean).join(' ')||c.username||'แชท',type:c.type})});
     chats=[...m.values()];

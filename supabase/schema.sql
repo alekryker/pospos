@@ -291,3 +291,25 @@ end $$;
 revoke execute on all functions in schema pos from public, anon;
 grant execute on all functions in schema pos to authenticated;
 revoke execute on function pos._create_login(text, text, text, text) from authenticated;
+
+-- ===== ลบพนักงาน (แอดมินเท่านั้น) · ประวัติการขายยังอยู่ เพราะบิลเก็บชื่อพนักงานเป็นข้อความ =====
+create or replace function pos.delete_staff(p_staff text) returns jsonb
+language plpgsql security definer set search_path = pos as $$
+declare s pos.staff;
+begin
+  if not pos.is_admin() then raise exception 'เฉพาะแอดมินเท่านั้น'; end if;
+  select * into s from pos.staff where id = p_staff;
+  if not found then raise exception 'ไม่พบพนักงาน'; end if;
+  if s.user_id = auth.uid() then raise exception 'ลบบัญชีที่กำลังใช้อยู่ไม่ได้'; end if;
+  if s.role = 'ADMIN' and s.active and not exists (select 1 from pos.staff where role = 'ADMIN' and active and id <> p_staff) then
+    raise exception 'ต้องมีแอดมินที่ใช้งานอยู่อย่างน้อย 1 คน';
+  end if;
+  delete from pos.staff where id = p_staff;
+  -- ลบบัญชีเข้าระบบเฉพาะที่ POS สร้างเอง (ยูส@slay-pos.local) ไม่แตะบัญชีอื่นของโปรเจกต์
+  if s.user_id is not null then
+    delete from auth.users where id = s.user_id and email like '%@slay-pos.local' and raw_user_meta_data->>'pos_staff' = 'true';
+  end if;
+  return jsonb_build_object('ok', true);
+end $$;
+revoke execute on function pos.delete_staff(text) from public, anon;
+grant execute on function pos.delete_staff(text) to authenticated;
