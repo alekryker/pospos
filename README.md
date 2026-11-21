@@ -1,6 +1,6 @@
 # pospos247
 
-ระบบ POS หน้าร้านบน GitHub Pages ข้อมูลทั้งหมด (สินค้า พนักงาน กะ บิล และแจ้งเตือน Telegram) อยู่ใน Google Apps Script ตัวเดิม
+ระบบ POS หน้าร้านบน GitHub Pages ข้อมูลทั้งหมด (สินค้า พนักงาน กะ บิล) อยู่ใน Google Apps Script ตัวเดิม การแจ้งเตือนต่างๆ (เช่น Telegram) ทำงานตามที่ Apps Script ตั้งไว้
 
 | หน้า | ลิงก์ |
 |---|---|
