@@ -941,7 +941,7 @@ function openPayment(){
       <div class="keys">${['7','8','9','4','5','6','1','2','3','.','0','⌫'].map(k=>`<button data-key="${k}">${k}</button>`).join('')}</div></div>
     <div id="payQR"><div class="noncash qrBox">
       ${ppReady()?`<img class="ppQr" src="${qrDataURL(ppPayload(sh.promptpay,t.net),8)}" alt="PromptPay QR"><div class="ppName">พร้อมเพย์ ${esc(fmtPP(sh.promptpay))}</div><b class="num">${money(t.net)}</b>
-        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>`
+        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>${isAdmin()?'<button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>':''}`
       :`<div class="ic">📱</div><div class="muted">ยังไม่ได้ตั้งเลขพร้อมเพย์ (ตั้งค่า → ร้าน)</div><b class="num">${money(t.net)}</b>`}</div></div>
     <div id="payOther" class="hidden"><div class="noncash"><div class="ic">🏦</div><div class="muted" style="margin-top:6px">ตรวจสอบยอดเงินเข้า แล้วกดยืนยัน</div><b class="num">${money(t.net)}</b></div></div>`,
     actions:[{label:'ยืนยันชำระเงิน',cls:'green',onClick:a=>{const n=totals().net;
@@ -1394,7 +1394,7 @@ async function connectQZ(silent){if(typeof qz==='undefined')throw new Error('ไ
   if(!list.includes(name)){if(silent)return;const pick=await form('เลือกเครื่องพิมพ์',`<div class="field"><select id="fQz">${list.map(p=>`<option>${esc(p)}</option>`).join('')}</select></div>`,'เชื่อมต่อ',el=>({v:el.querySelector('#fQz').value}));if(!pick)return;name=pick.v}
   DEV.printerName=name;saveDev();PRINTER.connected=true;PRINTER.name=name;updatePrinterUI()}
 async function sendRaw(parts){for(const p of parts){if(PRINTER.mode==='BT')await btWrite(p);else if(PRINTER.mode==='WEBUSB')await usbWrite(p)}}
-async function printReceipt(r){r={...r,noQR:true};
+async function printReceipt(r){
   if(PRINTER.mode==='AIRPRINT'||(!PRINTER.connected&&!(PRINTER.mode==='BT'&&BT.device))){if(PRINTER.mode!=='AIRPRINT')toast('ยังไม่เชื่อมเครื่องพิมพ์ — เปิดหน้าต่างพิมพ์แทน','warn');printDialog(r);return}
   try{if(PRINTER.mode==='QZ'){const c=await receiptCanvas(r);await qz.print(qz.configs.create(PRINTER.name),[{type:'raw',format:'image',flavor:'base64',data:c.toDataURL('image/png').split(',')[1],options:{language:'ESCPOS',dotDensity:'double'}},{type:'raw',format:'command',flavor:'plain',data:'\x1B\x64\x04\x1D\x56\x42\x00'}])}
     else{toast('กำลังพิมพ์...');await sendRaw(await escposReceipt(r))}toast('พิมพ์ใบเสร็จแล้ว','ok')}
@@ -1431,7 +1431,7 @@ async function slipCanvas(s,paper=DEV.slipPaper){
   let n=0;(s.items||[]).forEach(i=>{n+=Number(i.qty)||0;lr(i.name,'x '+i.qty,F+4,true)});rule();
   lr('รวม',n+' ชิ้น',F+2,true);y+=20;
   const out=document.createElement('canvas');out.width=W;out.height=Math.ceil(y);const o=out.getContext('2d',{alpha:false,willReadFrequently:true});o.fillStyle='#fff';o.fillRect(0,0,W,out.height);o.drawImage(c,0,0);return out}
-async function slipPrint(s){const c=s.billNo==='TEST'&&!s.items[0].price?await slipCanvas(s):await receiptCanvas({...receiptOf(s),noQR:true},DEV.slipPaper),parts=[new Uint8Array([0x1B,0x40])];for(let y=0;y<c.height;y+=128)parts.push(canvasRasterChunk(c,y,Math.min(128,c.height-y)));
+async function slipPrint(s){const c=s.billNo==='TEST'&&!s.items[0].price?await slipCanvas(s):await receiptCanvas(receiptOf(s),DEV.slipPaper),parts=[new Uint8Array([0x1B,0x40])];for(let y=0;y<c.height;y+=128)parts.push(canvasRasterChunk(c,y,Math.min(128,c.height-y)));
   parts.push(new Uint8Array([0x1B,0x64,0x04,0x1D,0x56,0x42,0x00]));for(const p of parts)await slipWrite(p)}
 const testSlip=()=>({billNo:'TEST',ts:Date.now(),staff:'พนักงานทดสอบ',note:'โต๊ะ 3',items:[{name:'เบียร์ช้าง ขวดใหญ่',qty:2,price:85,total:170},{name:'น้ำแข็งถัง',qty:1,price:40,total:40}],subtotal:210,discount:0,net:210,payment:'เงินสด',paid:210,change:0});
 async function slipPump(){
