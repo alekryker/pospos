@@ -322,3 +322,21 @@ drop policy if exists "pos products upload" on storage.objects;
 create policy "pos products upload" on storage.objects for insert to authenticated
   with check (bucket_id = 'pos-products' and pos.is_member());
 notify pgrst, 'reload schema';
+
+-- ===== ใบรายการสินค้าจากพนักงาน: เครื่องแอดมินจองบิลก่อนพิมพ์ (กันพิมพ์ซ้ำหลายเครื่อง) =====
+alter table pos.sales add column if not exists slip_at timestamptz;
+create index if not exists pos_sales_slip_pending on pos.sales (ts) where slip_at is null;
+create or replace function pos.claim_slip(p_bill text, p_on boolean default true) returns boolean
+language plpgsql security definer set search_path = pos as $$
+begin
+  if not pos.is_admin() then raise exception 'เฉพาะแอดมินเท่านั้น'; end if;
+  if p_on then
+    update pos.sales set slip_at = now() where bill_no = p_bill and slip_at is null;
+  else
+    update pos.sales set slip_at = null where bill_no = p_bill;
+  end if;
+  return found;
+end $$;
+revoke execute on function pos.claim_slip(text, boolean) from public, anon;
+grant execute on function pos.claim_slip(text, boolean) to authenticated;
+notify pgrst, 'reload schema';

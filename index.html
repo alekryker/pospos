@@ -431,6 +431,13 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="switch" style="margin-top:6px"><div><b>พิมพ์อัตโนมัติหลังขาย</b><small>เมื่อเชื่อมเครื่องพิมพ์แล้ว</small></div><label class="tg"><input type="checkbox" id="pAuto"><span></span></label></div>
         <div class="field" style="margin:8px 0 0"><label>ขนาดกระดาษ</label><div class="seg full" id="paperSeg"><button data-paper="58">58 มม.</button><button data-paper="80">80 มม.</button></div></div>
       </div>
+      <div class="card adminOnly" id="slipCard">
+        <h4>ใบรายการสินค้าจากพนักงาน (Bluetooth)</h4>
+        <p class="muted" style="font-size:13px;margin:0 0 10px">เมื่อพนักงานขายจากเครื่องไหนก็ได้ ใบรายการสินค้าจะพิมพ์ออกเครื่องพิมพ์บลูทูธตัวนี้อัตโนมัติ — เปิดแอปเครื่องนี้ค้างไว้</p>
+        <div id="slipStatus" style="margin:0 0 8px;font-size:13.5px"></div>
+        <div class="btns"><button class="btn green" data-act="slipConnect" id="slipBtn">เชื่อมบลูทูธ</button><button class="btn" data-act="slipTest">ทดสอบพิมพ์</button></div>
+        <div class="switch" style="margin-top:6px"><div><b>รับพิมพ์ใบรายการของพนักงาน</b><small>ที่เครื่องนี้</small></div><label class="tg"><input type="checkbox" id="slipOn"><span></span></label></div>
+      </div>
       <div class="card adminOnly">
         <h4>ร้าน และใบเสร็จ (ใช้ร่วมทุกเครื่อง)</h4>
         <div class="field"><label>ชื่อร้าน</label><input id="rShop" placeholder="POS"></div>
@@ -547,6 +554,8 @@ const LocalAPI={
     const ps=local.get('products',[]);s.items.forEach(i=>{const p=ps.find(x=>x.id===i.id);if(p)p.stock=Number(p.stock)+i.qty});local.set('products',ps)},
   async salesBetween(a,b){return tx('dsales','readonly',st=>reqP(st.index('day').getAll(IDBKeyRange.bound(a,b))))},
   async getSale(no){return idbGet('dsales',no)},
+  async pendingSlips(since,ids){const d=await this.salesBetween(dayKey(since),dayKey(Date.now()));return d.filter(x=>x.status!=='void'&&!x.slipAt&&x.ts>=since&&ids.includes(x.staffId)).sort((a,b)=>a.ts-b.ts).slice(0,10)},
+  async claimSlip(no,on=true){const x=await idbGet('dsales',no);if(!x||(on&&x.slipAt))return false;x.slipAt=on?Date.now():null;await idbPut('dsales',x);return true},
   async currentShift(){return local.get('shift',null)},
   async openShift(sh){if(local.get('shift',null))throw new Error('มีกะเปิดอยู่แล้ว');local.set('shift',sh)},
   async closeShift(r){local.del('shift');await idbPut('dshifts',r)},
@@ -593,6 +602,8 @@ const CloudAPI={
   async voidSale(no,reason,by){const r=chk(await sb.rpc('void_sale',{p_bill:no,p_reason:reason,p_by:by}));if(!r||!r.ok)throw new Error((r&&r.error)||'ยกเลิกไม่สำเร็จ')},
   async salesBetween(a,b){const out=[];for(let f=0;;f+=1000){const d=chk(await sb.from('sales').select('*').gte('day',a).lte('day',b).order('ts').range(f,f+999));out.push(...d.map(db2sale));if(d.length<1000)break}return out},
   async getSale(no){const d=chk(await sb.from('sales').select('*').eq('bill_no',no).maybeSingle());return d&&db2sale(d)},
+  async pendingSlips(since,ids){if(!ids.length)return[];return chk(await sb.from('sales').select('*').eq('status','ok').is('slip_at',null).gte('ts',iso(since)).in('staff_id',ids).order('ts').limit(10)).map(db2sale)},
+  async claimSlip(no,on=true){return !!chk(await sb.rpc('claim_slip',{p_bill:no,p_on:on}))},
   async currentShift(){return db2shift(chk(await sb.from('shifts').select('*').is('closed_at',null).maybeSingle()))},
   async openShift(sh){const r=await sb.from('shifts').insert({id:sh.id,opened_at:iso(sh.openedAt),opened_by:sh.by,opening_cash:sh.openingCash});
     if(r.error)throw new Error(/duplicate|unique/i.test(r.error.message)?'มีกะเปิดอยู่แล้ว (จากเครื่องอื่น)':r.error.message)},
@@ -738,7 +749,7 @@ function loginAs(s){
   $('staffLine').textContent=s.name+(s.role==='ADMIN'?' · แอดมิน':' · แคชเชียร์');
   $('uName').textContent=s.name;$('uRole').textContent=(s.role==='ADMIN'?'ผู้ดูแลระบบ':'แคชเชียร์')+' · เครื่อง '+DEV.code;$('uAvatar').textContent=s.name.charAt(0).toUpperCase();
   document.querySelectorAll('.adminOnly').forEach(x=>x.classList.toggle('hidden',!isAdmin()));
-  if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();if(isAdmin()){loadTgUI();setTimeout(keepImages,2500)}
+  if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();if(isAdmin()){loadTgUI();setTimeout(keepImages,2500);setTimeout(slipPump,1500)}updateSlipUI&&updateSlipUI();
 }
 /* ย้ายรูปสินค้าที่เป็นลิงก์ภายนอก (เช่น go.pospos.co / Drive) มาเก็บใน Supabase Storage ถาวร — ทำเองเบื้องหลังเมื่อแอดมินเข้าใช้ */
 let IMG_BUSY=false;const IMG_FAIL=new Set();
@@ -769,7 +780,7 @@ async function refreshCloud(){
     setOnline(true);CART=CART.filter(c=>prodById(c.id));renderAll();if(VIEW==='bills')renderBills();if(VIEW==='report')renderReport();
   }catch(e){if(isNetErr(e))setOnline(false);else console.warn(e)}
 }
-function queueRefresh(table){clearTimeout(REFRESH_T);REFRESH_T=setTimeout(()=>{if(table==='sales'){if(VIEW==='bills')renderBills();if(VIEW==='report')renderReport()}else refreshCloud()},350)}
+function queueRefresh(table){if(table==='sales')setTimeout(slipPump,600);clearTimeout(REFRESH_T);REFRESH_T=setTimeout(()=>{if(table==='sales'){if(VIEW==='bills')renderBills();if(VIEW==='report')renderReport()}else refreshCloud()},350)}
 function setOnline(v){ONLINE=v;renderSync()}
 async function renderSync(){
   const n=(await idbAll('outbox')).length,q=local.get('tgq',[]).length,p=$('syncPill');
@@ -1367,6 +1378,53 @@ async function pulseDrawer(){if(!PRINTER.connected)throw new Error('กรุณ
   if(PRINTER.mode==='BT'||PRINTER.mode==='WEBUSB')return sendRaw([new Uint8Array([0x1B,0x70,0x00,0x19,0xFA])]);
   if(PRINTER.mode==='QZ')return qz.print(qz.configs.create(PRINTER.name),[{type:'raw',format:'command',flavor:'plain',data:'\x1B\x70\x00\x19\xFA'}]);throw new Error('หน้าต่างพิมพ์ (AirPrint) สั่งเปิดลิ้นชักไม่ได้')}
 async function openDrawerManual(){try{await pulseDrawer();toast('เปิดลิ้นชักแล้ว','ok')}catch(e){toast(errMsg(e),'warn')}}
+/* ===== ใบรายการสินค้าจากพนักงาน → เครื่องพิมพ์บลูทูธตัวที่ 2 ของเครื่องแอดมิน ===== */
+const SLIP={device:null,char:null,chunk:100,connected:false,name:''};let SLIP_BUSY=false,SLIP_LOCK=null;
+async function slipOpen(device){const server=await device.gatt.connect();let ch=null;
+  for(const sv of await server.getPrimaryServices()){for(const c of await sv.getCharacteristics())if(c.properties.write||c.properties.writeWithoutResponse){ch=c;break}if(ch)break}
+  if(!ch)throw new Error('เชื่อมได้แต่ไม่พบช่องส่งข้อมูล — เครื่องนี้อาจเป็น Bluetooth แบบ Classic ที่เว็บใช้ไม่ได้');
+  Object.assign(SLIP,{device,char:ch,connected:true,name:device.name||'Bluetooth Printer'});DEV.slipName=SLIP.name;saveDev();
+  device.addEventListener('gattserverdisconnected',()=>{SLIP.connected=false;SLIP.char=null;updateSlipUI()},{once:true});updateSlipUI()}
+async function slipConnectUI(){try{if(!hasBT())throw new Error('เครื่องนี้ใช้ Bluetooth ผ่านเว็บไม่ได้ (ใช้ Chrome บน Android หรือคอม)');
+    await slipOpen(await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:BT_SERVICES}));
+    if(!DEV.slipOn){DEV.slipOn=true;DEV.slipSince=Date.now();saveDev()}updateSlipUI();toast('เชื่อมเครื่องพิมพ์ใบรายการแล้ว','ok');slipPump()}
+  catch(e){if(e&&e.name==='NotFoundError')return;toast(errMsg(e),'err');updateSlipUI()}}
+async function slipWrite(data){if(!SLIP.char||!SLIP.device.gatt.connected){if(SLIP.device)await slipOpen(SLIP.device);else throw new Error('ยังไม่ได้เชื่อมเครื่องพิมพ์ใบรายการ')}
+  const c=SLIP.char,nr=c.properties.writeWithoutResponse&&c.writeValueWithoutResponse;
+  for(let i=0;i<data.length;){const part=data.slice(i,i+SLIP.chunk);try{if(nr){await c.writeValueWithoutResponse(part);await sleep(6)}else if(c.writeValueWithResponse)await c.writeValueWithResponse(part);else await c.writeValue(part);i+=part.length}catch(e){if(SLIP.chunk>20){SLIP.chunk=20;continue}throw e}}}
+async function slipCanvas(s){
+  try{await Promise.all([document.fonts.load('22px "Anuphan"'),document.fonts.load('bold 22px "Anuphan"')])}catch(e){}
+  const W=Number(DEV.slipPaper||DEV.paper)===58?384:576,M=W===384?8:20,F=W===384?24:26,c=document.createElement('canvas');c.width=W;c.height=4000;
+  const x=c.getContext('2d',{alpha:false,willReadFrequently:true});x.fillStyle='#fff';x.fillRect(0,0,W,c.height);x.fillStyle='#000';x.textBaseline='top';
+  let y=10;const font=(z,b)=>x.font=`${b?'bold ':''}${z}px "Anuphan", sans-serif`;
+  const center=(t,z=F,b=false)=>{font(z,b);x.textAlign='center';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,W/2,y);y+=z+8})};
+  const left=(t,z=F,b=false)=>{font(z,b);x.textAlign='left';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,M,y);y+=z+8})};
+  const lr=(l,rt,z=F,b=false)=>{font(z,b);const rw=x.measureText(rt).width;x.textAlign='left';wrapText(x,l,W-M*2-rw-14).forEach((ln,i)=>{x.fillText(ln,M,y);if(!i){x.textAlign='right';x.fillText(rt,W-M,y);x.textAlign='left'}y+=z+8})};
+  const rule=()=>{y+=2;for(let i=M;i<W-M;i+=10)x.fillRect(i,y,6,2);y+=10};
+  center('ใบรายการสินค้า',F+10,true);center(fmtTime(s.ts||Date.now()),F-2);rule();
+  left('บิล: '+s.billNo);left('พนักงาน: '+(s.staff||'-'),F+2,true);if(s.note)left('หมายเหตุ: '+s.note,F+2,true);rule();
+  let n=0;(s.items||[]).forEach(i=>{n+=Number(i.qty)||0;lr(i.name,'x '+i.qty,F+4,true)});rule();
+  lr('รวม',n+' ชิ้น',F+2,true);y+=20;
+  const out=document.createElement('canvas');out.width=W;out.height=Math.ceil(y);const o=out.getContext('2d',{alpha:false,willReadFrequently:true});o.fillStyle='#fff';o.fillRect(0,0,W,out.height);o.drawImage(c,0,0);return out}
+async function slipPrint(s){const c=await slipCanvas(s),parts=[new Uint8Array([0x1B,0x40])];for(let y=0;y<c.height;y+=128)parts.push(canvasRasterChunk(c,y,Math.min(128,c.height-y)));
+  parts.push(new Uint8Array([0x1B,0x64,0x04,0x1D,0x56,0x42,0x00]));for(const p of parts)await slipWrite(p)}
+const testSlip=()=>({billNo:'TEST',ts:Date.now(),staff:'พนักงานทดสอบ',note:'โต๊ะ 3',items:[{name:'เบียร์ช้าง ขวดใหญ่',qty:2},{name:'น้ำแข็งถัง',qty:1}]});
+async function slipPump(){
+  if(SLIP_BUSY||!DEV.slipOn||!USER||!isAdmin()||!(SLIP.connected||SLIP.device))return;
+  const ids=STAFF.filter(x=>x.role!=='ADMIN').map(x=>x.id);if(!ids.length)return;
+  SLIP_BUSY=true;let printed=0;
+  try{const since=Math.max(Number(DEV.slipSince)||Date.now(),Date.now()-3*3600e3);
+    for(const s of await API.pendingSlips(since,ids)){
+      if(!await API.claimSlip(s.billNo,true))continue;
+      try{await slipPrint(s);printed++}catch(e){await API.claimSlip(s.billNo,false).catch(()=>{});toast('พิมพ์ใบรายการไม่สำเร็จ: '+errMsg(e),'err');break}}}
+  catch(e){console.warn('slipPump',e)}finally{SLIP_BUSY=false}
+  if(printed)toast(`พิมพ์ใบรายการพนักงาน ${printed} บิล`,'ok')}
+async function keepAwake(){try{if(DEV.slipOn&&navigator.wakeLock&&!SLIP_LOCK&&document.visibilityState==='visible'){SLIP_LOCK=await navigator.wakeLock.request('screen');SLIP_LOCK.addEventListener('release',()=>{SLIP_LOCK=null})}}catch(e){}}
+function updateSlipUI(){const st=$('slipStatus');if(!st)return;$('slipOn').checked=!!DEV.slipOn;
+  st.innerHTML=(SLIP.connected?`<span class="tag ok">เชื่อมแล้ว</span> ${esc(SLIP.name)}`:`<span class="tag warn">ยังไม่เชื่อม</span>${DEV.slipName?' '+esc(DEV.slipName):''}`)+(DEV.slipOn?' · <span class="tag ok">รับพิมพ์อยู่</span>':' · <span class="tag">ปิดรับพิมพ์</span>');
+  $('slipBtn').textContent=SLIP.connected?'เชื่อมเครื่องอื่น':'เชื่อมบลูทูธ';keepAwake()}
+function initSlip(){updateSlipUI();setInterval(slipPump,15000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){keepAwake();slipPump()}});
+  if(DEV.slipName&&hasBT()&&navigator.bluetooth.getDevices)navigator.bluetooth.getDevices().then(ds=>{const d=(ds||[]).find(x=>x.name===DEV.slipName);if(d)slipOpen(d).then(slipPump).catch(()=>{SLIP.device=d})}).catch(()=>{})}
 async function autoDrawer(){if(PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
 
 /* ======================= SETTINGS / VIEW ======================= */
@@ -1403,10 +1461,11 @@ function bindUI(){
       sync:async()=>{await syncNow();await refreshCloud();toast(ONLINE?'ซิงก์แล้ว':'ยังออฟไลน์',ONLINE?'ok':'warn')},
       signOut:async()=>{if(!(await ask('ออกจากระบบ?',DEMO?'กลับไปหน้าเลือกพนักงาน':'ต้องเข้าสู่ระบบใหม่ (ยูส + PIN หรืออีเมลร้าน) เพื่อใช้งาน','ออกจากระบบ',true)))return;
         if(DEMO){USER=null;sessionStorage.removeItem(KP+'p3:user');closeCart();showLock();return}signOutDevice()},
-      saveShop:saveShopUI,tgSave,tgTest:()=>tgTest(a.dataset.ch||'admin'),tgFind,connectPrinter,testPrint:()=>printReceipt(testReceipt()),drawer:openDrawerManual,adminProducts,adminStaff,dataTools})[a.dataset.act]?.();
+      saveShop:saveShopUI,slipConnect:slipConnectUI,slipTest:()=>slipPrint(testSlip()).then(()=>toast('พิมพ์ทดสอบแล้ว','ok')).catch(e=>toast(errMsg(e),'err')),tgSave,tgTest:()=>tgTest(a.dataset.ch||'admin'),tgFind,connectPrinter,testPrint:()=>printReceipt(testReceipt()),drawer:openDrawerManual,adminProducts,adminStaff,dataTools})[a.dataset.act]?.();
   });
   $('q').addEventListener('input',renderGrid);$('discVal').addEventListener('input',renderCart);
   $('pAuto').addEventListener('change',e=>{DEV.autoPrint=e.target.checked;saveDev()});
+  $('slipOn').addEventListener('change',e=>{DEV.slipOn=e.target.checked;if(DEV.slipOn)DEV.slipSince=Date.now();saveDev();updateSlipUI();slipPump()});
   $('billDate').addEventListener('change',renderBills);$('dashDate').addEventListener('change',renderReport);
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCart()});
 }
@@ -1446,7 +1505,7 @@ addEventListener('scroll',()=>{const b=$('toTop');if(b)b.classList.toggle('on',s
 document.addEventListener('input',e=>{if(e.target.id==='note')renderNoteNames()});
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 (async function boot(){
-  initPrinter();bindUI();applyTheme();$('billDate').value=dayKey(Date.now());
+  initPrinter();initSlip();bindUI();applyTheme();$('billDate').value=dayKey(Date.now());
   try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
   const c=local.get('cache',null);if(c)applyData(c);renderAll();
   if(DEMO){$('demoBar').classList.remove('hidden');await seedDemo();await startApp();setTimeout(()=>toast('โหมดทดลอง: PIN แอดมิน 1234 · แคชเชียร์ 0000'),700);return}
