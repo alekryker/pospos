@@ -437,6 +437,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div id="slipStatus" style="margin:0 0 8px;font-size:13.5px"></div>
         <div class="btns"><button class="btn green" data-act="slipConnect" id="slipBtn">เชื่อมบลูทูธ</button><button class="btn" data-act="slipTest">ทดสอบพิมพ์</button></div>
         <div class="switch" style="margin-top:6px"><div><b>รับพิมพ์ใบรายการของพนักงาน</b><small>ที่เครื่องนี้</small></div><label class="tg"><input type="checkbox" id="slipOn"><span></span></label></div>
+        <div class="field" style="margin:8px 0 0"><label>ขนาดกระดาษเครื่องบลูทูธ</label><div class="seg full" id="slipPaperSeg"><button data-slippaper="58">58 มม.</button><button data-slippaper="80">80 มม.</button></div></div>
       </div>
       <div class="card adminOnly">
         <h4>ร้าน และใบเสร็จ (ใช้ร่วมทุกเครื่อง)</h4>
@@ -620,7 +621,7 @@ let API=DEMO?LocalAPI:CloudAPI;
 
 /* ---------- state ---------- */
 let PRODUCTS=[],STAFF=[],SHOP={},SHIFT=null,USER=null;
-let DEV=Object.assign({paper:80,autoPrint:true,theme:'light',code:'',printerMode:'',printerName:''},local.get('device',{}));
+let DEV=Object.assign({paper:80,slipPaper:58,autoPrint:true,theme:'light',code:'',printerMode:'',printerName:''},local.get('device',{}));
 if(!DEV.code){DEV.code='ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random()*24)]+Math.floor(Math.random()*10);local.set('device',DEV)}
 const saveDev=()=>local.set('device',DEV);
 let CART=[],DISC_MODE='BAHT',CAT='',VIEW='sell',DASH_MODE='DAY',BUSY=false,PAY={method:'เงินสด',input:''},ONLINE=true;
@@ -1398,7 +1399,7 @@ async function slipWrite(data){if(!SLIP.char||!SLIP.device.gatt.connected){if(SL
   for(let i=0;i<data.length;){const part=data.slice(i,i+SLIP.chunk);try{if(nr){await c.writeValueWithoutResponse(part);await sleep(6)}else if(c.writeValueWithResponse)await c.writeValueWithResponse(part);else await c.writeValue(part);i+=part.length}catch(e){if(SLIP.chunk>20){SLIP.chunk=20;continue}throw e}}}
 async function slipCanvas(s){
   try{await Promise.all([document.fonts.load('22px "Anuphan"'),document.fonts.load('bold 22px "Anuphan"')])}catch(e){}
-  const W=Number(DEV.slipPaper||DEV.paper)===58?384:576,M=W===384?8:20,F=W===384?24:26,c=document.createElement('canvas');c.width=W;c.height=4000;
+  const W=Number(DEV.slipPaper)===80?576:384,M=W===384?8:20,F=W===384?24:26,c=document.createElement('canvas');c.width=W;c.height=4000;
   const x=c.getContext('2d',{alpha:false,willReadFrequently:true});x.fillStyle='#fff';x.fillRect(0,0,W,c.height);x.fillStyle='#000';x.textBaseline='top';
   let y=10;const font=(z,b)=>x.font=`${b?'bold ':''}${z}px "Anuphan", sans-serif`;
   const center=(t,z=F,b=false)=>{font(z,b);x.textAlign='center';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,W/2,y);y+=z+8})};
@@ -1424,7 +1425,7 @@ async function slipPump(){
   catch(e){console.warn('slipPump',e)}finally{SLIP_BUSY=false}
   if(printed)toast(`พิมพ์ใบรายการพนักงาน ${printed} บิล`,'ok')}
 async function keepAwake(){try{if(DEV.slipOn&&navigator.wakeLock&&!SLIP_LOCK&&document.visibilityState==='visible'){SLIP_LOCK=await navigator.wakeLock.request('screen');SLIP_LOCK.addEventListener('release',()=>{SLIP_LOCK=null})}}catch(e){}}
-function updateSlipUI(){const st=$('slipStatus');if(!st)return;$('slipOn').checked=!!DEV.slipOn;
+function updateSlipUI(){const st=$('slipStatus');if(!st)return;document.querySelectorAll('#slipPaperSeg button').forEach(b=>b.classList.toggle('on',Number(b.dataset.slippaper)===(Number(DEV.slipPaper)===80?80:58)));$('slipOn').checked=!!DEV.slipOn;
   st.innerHTML=(SLIP.connected?`<span class="tag ok">เชื่อมแล้ว</span> ${esc(SLIP.name)}`:`<span class="tag warn">ยังไม่เชื่อม</span>${DEV.slipName?' '+esc(DEV.slipName):''}`)+(DEV.slipOn?' · <span class="tag ok">รับพิมพ์อยู่</span>':' · <span class="tag">ปิดรับพิมพ์</span>');
   $('slipBtn').textContent=SLIP.connected?'เชื่อมเครื่องอื่น':'เชื่อมบลูทูธ';keepAwake()}
 function initSlip(){updateSlipUI();setInterval(slipPump,15000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){keepAwake();slipPump()}});
@@ -1453,6 +1454,7 @@ function bindUI(){
     const ds=t.closest('[data-dash]');if(ds){DASH_MODE=ds.dataset.dash;document.querySelectorAll('#dashSeg button').forEach(b=>b.classList.toggle('on',b===ds));renderReport();return}
     const th=t.closest('#themeSeg [data-theme]');if(th){DEV.theme=th.dataset.theme;saveDev();applyTheme();return}
     const pm=t.closest('[data-pmode]');if(pm){setMode(pm.dataset.pmode);return}
+    const sp=t.closest('[data-slippaper]');if(sp){DEV.slipPaper=Number(sp.dataset.slippaper);saveDev();updateSlipUI();return}
     const pp=t.closest('[data-paper]');if(pp){DEV.paper=Number(pp.dataset.paper);saveDev();loadSettingsUI();return}
     const rs=t.closest('[data-restore]');if(rs){restoreHeld(Number(rs.dataset.restore));return}
     const dh=t.closest('[data-delheld]');if(dh){ask('ลบบิลที่พักนี้?','','ลบ',true).then(ok=>ok&&saveHeld(getHeld().filter(x=>x.id!==Number(dh.dataset.delheld))));return}
