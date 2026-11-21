@@ -6,6 +6,7 @@
 |---|---|
 | หน้าหลัก | https://alekryker.github.io/pospos/ |
 | ทดลองเล่น (ไม่ต่อฐานข้อมูล, PIN แอดมิน `1234`) | https://alekryker.github.io/pospos/?demo=1 |
+| แอป Android (APK) | https://github.com/alekryker/pospos/releases/latest/download/POS.apk |
 | ระบบเดิม (Apps Script) | https://alekryker.github.io/pospos/legacy/ |
 
 ## ตั้งค่าฐานข้อมูล (ทำครั้งเดียว)
@@ -41,3 +42,8 @@
 - พิมพ์ภาษาไทยได้ครบ เพราะใบเสร็จส่งไปเครื่องพิมพ์เป็นภาพ
 - รองรับกระดาษ 58 และ 80 มม.
 - สั่งเปิดลิ้นชักเงินได้ เมื่อใช้ Bluetooth, USB หรือ QZ Tray
+
+## แอป Android
+- GitHub Actions สร้าง APK ให้อัตโนมัติทุกครั้งที่แก้โฟลเดอร์ `android/` หรือกดรันเองที่แท็บ Actions → Android APK
+- ตัวแอปเปิดหน้าเว็บนี้แบบเต็มจอผ่าน Chrome (Trusted Web Activity) แก้หน้าเว็บแล้วแอปอัปเดตตามทันที ไม่ต้องสร้าง APK ใหม่
+- APK เซ็นด้วยกุญแจใน Secret `KEYSTORE_B64` / `KEYSTORE_PASSWORD` ไฟล์ตัวจริงเก็บไว้นอก repo **ห้ามทำหาย** ถ้าหายจะอัปเดตทับแอปเดิมไม่ได้
