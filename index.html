@@ -165,6 +165,9 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .seg button.on{background:var(--accentInk);color:var(--bg)}
 .seg.full{display:flex}.seg.full button{flex:1}
 .note{width:100%;margin-bottom:12px}
+.nnames{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}.nnames:empty{display:none}
+.nnames button{height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:13.5px;cursor:pointer}
+.nnames button.on{background:var(--accentInk);color:var(--bg);border-color:transparent}
 .sum{display:flex;justify-content:space-between;font-size:13.5px;color:var(--sub);padding:2px 0}
 .sum.net{color:var(--ink);font-weight:700;font-size:15px;padding-top:8px;align-items:baseline}
 .sum.net b{font-size:28px;font-weight:800;letter-spacing:-.5px}
@@ -367,6 +370,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
             <input id="discVal" type="number" inputmode="decimal" min="0" placeholder="0">
             <div class="seg" id="discSeg"><button data-disc="BAHT" class="on">฿</button><button data-disc="PERCENT">%</button></div></div>
           <input class="note" id="note" placeholder="หมายเหตุ / โต๊ะ / ชื่อลูกค้า (ถ้ามี)" maxlength="200">
+          <div class="nnames" id="noteNames"></div>
           <div class="sum"><span>รวม</span><span class="num" id="sSub">฿0.00</span></div>
           <div class="sum"><span>ส่วนลด</span><span class="num" id="sDisc">-฿0.00</span></div>
           <div class="sum net"><span>ยอดสุทธิ</span><b class="num" id="sNet">฿0.00</b></div>
@@ -430,6 +434,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="field"><label>ชื่อร้าน</label><input id="rShop" placeholder="POS"></div>
         <div class="field"><label>ที่อยู่ / เบอร์โทร (ขึ้นบรรทัดใหม่ได้)</label><textarea id="rHead" placeholder="เช่น 123 ถ.สุขุมวิท โทร 08x-xxx-xxxx"></textarea></div>
         <div class="field"><label>ข้อความท้ายบิล</label><input id="rFoot" placeholder="ขอบคุณค่ะ/ครับ"></div>
+        <div class="field"><label>ชื่อให้กดเลือกในหมายเหตุ (คั่นด้วย , หรือขึ้นบรรทัดใหม่)</label><textarea id="rNames" rows="3" placeholder="มาร์ช, แพร, มิ้น"></textarea></div>
         <div class="field"><label>พร้อมเพย์ (เบอร์โทร / เลขบัตรประชาชน)</label><input id="ppId" inputmode="numeric" placeholder="0646283140"><small>QR ล็อกยอดตามบิล และพิมพ์ลงใบเสร็จเมื่อชำระด้วย QR</small></div>
         <button class="btn green block" data-act="saveShop">บันทึก</button>
       </div>
@@ -607,7 +612,7 @@ if(!DEV.code){DEV.code='ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.floor(Math.random()*24)]+
 const saveDev=()=>local.set('device',DEV);
 let CART=[],DISC_MODE='BAHT',CAT='',VIEW='sell',DASH_MODE='DAY',BUSY=false,PAY={method:'เงินสด',input:''},ONLINE=true;
 const isAdmin=()=>USER&&USER.role==='ADMIN',prodById=id=>PRODUCTS.find(p=>p.id===id);
-const SHOP_DEF={shop:'',head:'',foot:'',promptpay:'0646283140'};
+const SHOP_DEF={shop:'',head:'',foot:'',promptpay:'0646283140',noteNames:['มาร์ช','แพร','มิ้น','แม็ค','อั๋น','มิ้นน้อย','ใบนัด']};
 const shop=()=>({...SHOP_DEF,...SHOP});
 function cacheSave(){local.set('cache',{products:PRODUCTS,staff:STAFF,shop:SHOP,shift:SHIFT,at:Date.now()})}
 function applyData(d){PRODUCTS=d.products||[];STAFF=d.staff||[];SHOP=d.shop||{};SHIFT=d.shift||null;cacheSave()}
@@ -820,7 +825,13 @@ function changeQty(id,d){const c=CART.find(x=>x.id===id),p=prodById(id);if(!c)re
   if(c.qty<=0)CART=CART.filter(x=>x.id!==id);else if(p&&c.qty>Number(p.stock)){c.qty=Number(p.stock);toast('ถึงจำนวนสต๊อกสูงสุดแล้ว','warn')}updateCard(id);renderCart()}
 function totals(){const sub=CART.reduce((a,x)=>a+x.qty*x.price,0),v=Math.max(0,Number($('discVal').value)||0);
   let d=DISC_MODE==='PERCENT'?sub*Math.min(v,100)/100:v;d=Math.round(Math.min(d,sub)*100)/100;return{subtotal:sub,discount:d,net:Math.max(0,sub-d),count:CART.reduce((a,x)=>a+x.qty,0)}}
-function renderCart(){
+function renderNoteNames(){const el=$('noteNames');if(!el)return;const cur=$('note').value.trim(),ns=shop().noteNames||[];
+  el.innerHTML=ns.map(n=>`<button type="button" data-nn="${esc(n)}" class="${noteHas(cur,n)?'on':''}">${esc(n)}</button>`).join('')}
+const noteHas=(t,n)=>t.split(/\s*·\s*/).includes(n);
+function pickNoteName(n){const ns=shop().noteNames||[],had=noteHas($('note').value.trim(),n);
+  const rest=$('note').value.trim().split(/\s*·\s*/).filter(x=>x&&!ns.includes(x));
+  $('note').value=(had?rest:[n,...rest]).join(' · ');renderNoteNames()}
+function renderCart(){renderNoteNames();
   const t=totals();
   $('clist').innerHTML=CART.length?CART.map(x=>{const p=prodById(x.id)||{};return `<div class="citem"><div class="th">${p.image?`<img src="${esc(p.image)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:''}</div>
       <div class="nm"><b>${esc(x.name)}</b><small class="num">${money0(x.price)} / ชิ้น</small></div>
@@ -1111,7 +1122,7 @@ async function deleteStaff(id){
 
 /* ======================= SHOP SETTINGS / TELEGRAM ======================= */
 async function saveShopUI(){
-  const d={...SHOP,shop:$('rShop').value.trim(),head:$('rHead').value,foot:$('rFoot').value.trim(),promptpay:$('ppId').value.replace(/\D/g,'')};
+  const d={...SHOP,shop:$('rShop').value.trim(),head:$('rHead').value,foot:$('rFoot').value.trim(),noteNames:[...new Set($('rNames').value.split(/[,\n]/).map(x=>x.trim()).filter(Boolean))],promptpay:$('ppId').value.replace(/\D/g,'')};
   try{await guard(()=>API.saveShop(d),'กำลังบันทึก...');SHOP=d;cacheSave();loadSettingsUI();toast('บันทึกแล้ว ทุกเครื่องจะเห็นค่านี้','ok')}catch(e){}
 }
 async function loadTgUI(){try{const s=await API.tgStatus();$('tgOn').checked=!!s.on;$('tgChat').value=s.chat||'';$('tgStaffOn').checked=!!s.staffOn;$('tgStaffChat').value=s.staffChat||'';
@@ -1355,7 +1366,7 @@ async function openDrawerManual(){try{await pulseDrawer();toast('เปิดล
 async function autoDrawer(){if(isAdmin()&&PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
 
 /* ======================= SETTINGS / VIEW ======================= */
-function loadSettingsUI(){const s=shop();$('rShop').value=s.shop||'';$('rHead').value=s.head||'';$('rFoot').value=s.foot||'';$('ppId').value=s.promptpay||'';$('pAuto').checked=!!DEV.autoPrint;
+function loadSettingsUI(){const s=shop();$('rShop').value=s.shop||'';$('rHead').value=s.head||'';$('rFoot').value=s.foot||'';$('rNames').value=(s.noteNames||[]).join(', ');$('ppId').value=s.promptpay||'';$('pAuto').checked=!!DEV.autoPrint;
   $('shopTitle').textContent=s.shop||'POS';document.title=(s.shop||'POS')+' · POS';
   document.querySelectorAll('#paperSeg button').forEach(b=>b.classList.toggle('on',Number(b.dataset.paper)===Number(DEV.paper)));applyTheme()}
 function setView(v){VIEW=v;document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));document.querySelectorAll('#nav [data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
@@ -1380,6 +1391,7 @@ function bindUI(){
     const rs=t.closest('[data-restore]');if(rs){restoreHeld(Number(rs.dataset.restore));return}
     const dh=t.closest('[data-delheld]');if(dh){ask('ลบบิลที่พักนี้?','','ลบ',true).then(ok=>ok&&saveHeld(getHeld().filter(x=>x.id!==Number(dh.dataset.delheld))));return}
     const bl=t.closest('[data-bill]');if(bl){openBill(bl.dataset.bill);return}
+    const nn=t.closest('[data-nn]');if(nn){pickNoteName(nn.dataset.nn);return}
     const a=t.closest('[data-act]');if(!a)return;
     ({openCart,closeCart,hold:holdBill,clear:clearCart,pay:openPayment,shift:shiftDialog,lock,
       theme:()=>{DEV.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';saveDev();applyTheme()},
@@ -1427,6 +1439,7 @@ async function startApp(){
   syncNow();
 }
 addEventListener('scroll',()=>{const b=$('toTop');if(b)b.classList.toggle('on',scrollY>300&&VIEW==='sell')},{passive:true});
+document.addEventListener('input',e=>{if(e.target.id==='note')renderNoteNames()});
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 (async function boot(){
   initPrinter();bindUI();applyTheme();$('billDate').value=dayKey(Date.now());
