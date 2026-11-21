@@ -11,7 +11,7 @@
 <title>POS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.5/qz-tray.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.50.0/dist/umd/supabase.js"></script>
@@ -47,7 +47,7 @@ if(t==='auto')t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
-body{font-family:'Noto Sans Thai',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.45;overscroll-behavior-y:none;transition:background .25s,color .25s}
+body{font-family:'Anuphan',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.45;overscroll-behavior-y:none;transition:background .25s,color .25s}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;touch-action:manipulation}
 input,select,textarea{font:inherit;color:inherit}
 input::placeholder,textarea::placeholder{color:var(--mute)}
@@ -1282,10 +1282,10 @@ const testReceipt=()=>({billNo:'TEST',datetime:fmtTime(Date.now()),staff:USER?US
 function segWords(t){t=String(t??'');if(window.Intl&&Intl.Segmenter){try{return Array.from(new Intl.Segmenter('th',{granularity:'word'}).segment(t),s=>s.segment)}catch(e){}}return Array.from(t)}
 function wrapText(ctx,text,maxW){const L=[];let cur='';for(const w of segWords(text)){if(ctx.measureText(cur+w).width<=maxW||!cur)cur+=w;else{L.push(cur.trimEnd());cur=w.trimStart()}}if(cur)L.push(cur);return L.length?L:['']}
 async function receiptCanvas(r){
-  try{await Promise.all([document.fonts.load('22px "Noto Sans Thai"'),document.fonts.load('bold 22px "Noto Sans Thai"')])}catch(e){}
+  try{await Promise.all([document.fonts.load('22px "Anuphan"'),document.fonts.load('bold 22px "Anuphan"')])}catch(e){}
   const W=Number(DEV.paper)===58?384:576,M=W===384?8:20,F=W===384?22:24,c=document.createElement('canvas');c.width=W;c.height=4000;
   const x=c.getContext('2d',{alpha:false,willReadFrequently:true});x.fillStyle='#fff';x.fillRect(0,0,W,c.height);x.fillStyle='#000';x.textBaseline='top';
-  let y=10;const font=(s=F,b=false)=>x.font=`${b?'bold ':''}${s}px "Noto Sans Thai", sans-serif`;
+  let y=10;const font=(s=F,b=false)=>x.font=`${b?'bold ':''}${s}px "Anuphan", sans-serif`;
   const center=(t,s=F,b=false)=>{font(s,b);x.textAlign='center';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,W/2,y);y+=s+8})};
   const left=(t,s=F,b=false)=>{font(s,b);x.textAlign='left';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,M,y);y+=s+8})};
   const lr=(l,rt,s=F,b=false)=>{font(s,b);const rw=x.measureText(rt).width;x.textAlign='left';wrapText(x,l,W-M*2-rw-12).forEach((ln,i)=>{x.fillText(ln,M,y);if(!i){x.textAlign='right';x.fillText(rt,W-M,y);x.textAlign='left'}y+=s+8})};
@@ -1309,8 +1309,8 @@ function printDialog(r){
   const old=$('receiptPrintFrame');if(old)old.remove();const w=Number(DEV.paper)===58?'48mm':'72mm';
   const f=document.createElement('iframe');f.id='receiptPrintFrame';f.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';document.body.appendChild(f);
   const d=f.contentDocument||f.contentWindow.document;
-  d.open();d.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบเสร็จ</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;700&display=swap" rel="stylesheet">
-  <style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#000}body{font-family:'Noto Sans Thai',sans-serif;font-size:11.5px;line-height:1.4}#p{width:${w};max-width:${w};padding:2mm}.c{text-align:center}.bold{font-weight:700}.lr{display:flex;justify-content:space-between;gap:6px}hr{border:0;border-top:1px dashed #000;margin:5px 0}@page{margin:0}</style></head><body><div id="p">${receiptHtml(r)}</div></body></html>`);d.close();
+  d.open();d.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>ใบเสร็จ</title><link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>*{box-sizing:border-box}html,body{margin:0;padding:0;background:#fff;color:#000}body{font-family:'Anuphan',sans-serif;font-size:11.5px;line-height:1.4}#p{width:${w};max-width:${w};padding:2mm}.c{text-align:center}.bold{font-weight:700}.lr{display:flex;justify-content:space-between;gap:6px}hr{border:0;border-top:1px dashed #000;margin:5px 0}@page{margin:0}</style></head><body><div id="p">${receiptHtml(r)}</div></body></html>`);d.close();
   const go=()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){toast('เปิดหน้าพิมพ์ไม่สำเร็จ','err')}setTimeout(()=>{try{f.remove()}catch(_){}},4000)};
   const ready=()=>{const fd=f.contentDocument;(fd.fonts&&fd.fonts.ready?fd.fonts.ready:Promise.resolve()).then(()=>setTimeout(go,150))};if(d.readyState==='complete')ready();else f.onload=ready;
 }
