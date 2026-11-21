@@ -536,7 +536,7 @@ const iso=t=>new Date(t).toISOString();
 const p2db=p=>({id:p.id,name:p.name,category:p.category||'',price:+p.price||0,cost:+p.cost||0,stock:+p.stock||0,low:+p.low||0,image:p.image||'',active:p.active!==false,sort:+p.order||0,updated_at:iso(Date.now())});
 const db2p=r=>({id:r.id,name:r.name,category:r.category||'',price:+r.price||0,cost:+r.cost||0,stock:+r.stock||0,low:+r.low||0,image:r.image||'',active:r.active!==false,order:r.sort||0});
 const s2db=s=>({id:s.id,name:s.name,role:s.role,pin_hash:s.pinHash,active:s.active!==false,updated_at:iso(Date.now())});
-const db2s=r=>({id:r.id,name:r.name,role:r.role,pinHash:r.pin_hash,active:r.active!==false});
+const db2s=r=>({id:r.id,name:r.name,role:r.role,pinHash:r.pin_hash,active:r.active!==false,username:r.username||'',userId:r.user_id||null});
 const db2sale=r=>({billNo:r.bill_no,ts:Date.parse(r.ts),day:r.day,staff:r.staff,staffId:r.staff_id,shiftId:r.shift_id,device:r.device,items:r.items||[],
   subtotal:+r.subtotal,discount:+r.discount,net:+r.net,payment:r.payment,paid:+r.paid,change:+r.change,note:r.note||'',status:r.status||'ok',voidReason:r.void_reason,voidBy:r.void_by});
 const sale2db=s=>({bill_no:s.billNo,ts:iso(s.ts),day:s.day||dayKey(s.ts),staff:s.staff,staff_id:s.staffId||null,shift_id:s.shiftId||null,device:s.device||null,items:s.items,
@@ -551,6 +551,9 @@ const CloudAPI={
   async replaceProducts(l){chk(await sb.from('products').delete().neq('id','\u0000'));await CloudAPI.upsertProducts(l)},
   async deleteProduct(id){chk(await sb.from('products').delete().eq('id',id))},
   async upsertStaff(s){chk(await sb.from('staff').upsert(s2db(s)))},
+  async createStaffLogin(u,name,role,pin){return chk(await sb.rpc('create_staff_login',{p_username:u,p_name:name,p_role:role,p_pin:pin}))},
+  async setStaffPin(id,pin){return chk(await sb.rpc('set_staff_pin',{p_staff:id,p_pin:pin}))},
+  async setStaffActive(id,on){return chk(await sb.rpc('set_staff_active',{p_staff:id,p_active:on}))},
   async saveShop(d){chk(await sb.from('settings').upsert({id:1,data:d,updated_at:iso(Date.now())}))},
   async createSale(s){return chk(await sb.rpc('create_sale',{s}))},
   async voidSale(no,reason,by){const r=chk(await sb.rpc('void_sale',{p_bill:no,p_reason:reason,p_by:by}));if(!r||!r.ok)throw new Error((r&&r.error)||'ยกเลิกไม่สำเร็จ')},
@@ -635,18 +638,28 @@ function showConnect(msg=''){
     if(!/^https:\/\/.+/.test(url)||key.length<30){$('cxErr').textContent='กรอก URL และ key ให้ถูกต้อง';return}
     local.set('sb',{url,key});location.reload()};
 }
-function showShopLogin(msg=''){
-  gate(`${LOGO()}<p class="lead">เข้าสู่ระบบร้าน (ทำครั้งเดียวต่อเครื่อง)</p>
-    <div class="field"><label>อีเมลร้าน</label><input id="lgEmail" type="email" autocomplete="username" autocapitalize="none"></div>
-    <div class="field"><label>รหัสผ่าน</label><input id="lgPass" type="password" autocomplete="current-password"></div>
+const STAFF_DOMAIN='@slay-pos.local';
+function showShopLogin(msg='',mode='staff'){
+  const staff=mode==='staff';
+  gate(`${LOGO()}<p class="lead">${staff?'เข้าสู่ระบบพนักงาน':'เข้าสู่ระบบเจ้าของร้าน'}</p>
+    <div class="seg full" style="margin-bottom:14px"><button data-lm="staff" class="${staff?'on':''}">พนักงาน</button><button data-lm="owner" class="${staff?'':'on'}">เจ้าของร้าน</button></div>
+    ${staff?`<div class="field"><label>ยูสพนักงาน</label><input id="lgUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="เช่น slay1"></div>
+      <div class="field"><label>PIN 6 หลัก</label><input id="lgPass" type="password" inputmode="numeric" maxlength="6" autocomplete="current-password" placeholder="••••••"></div>`
+    :`<div class="field"><label>อีเมลร้าน</label><input id="lgUser" type="email" autocomplete="username" autocapitalize="none"></div>
+      <div class="field"><label>รหัสผ่าน</label><input id="lgPass" type="password" autocomplete="current-password"></div>`}
     <div class="gerr" id="lgErr">${esc(msg)}</div><button class="btn green block" id="lgBtn">เข้าสู่ระบบ</button>
     ${SB_URL?'':'<p class="muted" style="text-align:center;margin-top:12px;font-size:12px"><a href="#" id="lgReset" style="color:var(--sub)">เปลี่ยนฐานข้อมูล</a></p>'}`);
-  const go=async()=>{const email=$('lgEmail').value.trim(),password=$('lgPass').value;if(!email||!password){$('lgErr').textContent='กรอกอีเมลและรหัสผ่าน';return}
+  $('gbox').querySelectorAll('[data-lm]').forEach(b=>b.onclick=()=>showShopLogin('',b.dataset.lm));
+  const go=async()=>{let u=$('lgUser').value.trim(),password=$('lgPass').value;
+    if(!u||!password){$('lgErr').textContent=staff?'กรอกยูสและ PIN':'กรอกอีเมลและรหัสผ่าน';return}
+    if(staff){if(!/^\d{6}$/.test(password)){$('lgErr').textContent='PIN ต้องเป็นตัวเลข 6 หลัก';return}u=u.toLowerCase().replace(/@.*$/,'')+STAFF_DOMAIN}
     $('lgBtn').disabled=true;$('lgBtn').textContent='กำลังเข้าสู่ระบบ...';
-    const {error}=await sb.auth.signInWithPassword({email,password});
-    if(error){$('lgErr').textContent=/invalid/i.test(error.message)?'อีเมลหรือรหัสผ่านไม่ถูกต้อง':error.message;$('lgBtn').disabled=false;$('lgBtn').textContent='เข้าสู่ระบบ';return}
+    const {error}=await sb.auth.signInWithPassword({email:u,password});
+    if(error){$('lgErr').textContent=/invalid/i.test(error.message)?(staff?'ยูสหรือ PIN ไม่ถูกต้อง':'อีเมลหรือรหัสผ่านไม่ถูกต้อง'):/banned/i.test(error.message)?'บัญชีนี้ถูกปิดใช้งาน':error.message;
+      $('lgBtn').disabled=false;$('lgBtn').textContent='เข้าสู่ระบบ';return}
     startApp()};
   $('lgBtn').onclick=go;$('lgPass').onkeydown=e=>{if(e.key==='Enter')go()};
+  setTimeout(()=>$('lgUser')&&$('lgUser').focus(),150);
   const r=$('lgReset');if(r)r.onclick=e=>{e.preventDefault();local.del('sb');location.reload()};
 }
 
@@ -665,8 +678,10 @@ function showSetup(){
     try{const s={id:uid(),name,role:'ADMIN',pinHash:await sha(pin),active:true};await API.upsertStaff(s);STAFF=[s];SHOP={...SHOP,shop:sh};await API.saveShop(SHOP);cacheSave();
       loadSettingsUI();loginAs(s);if(!PRODUCTS.length)setTimeout(dataTools,400)}catch(e){$('suErr').textContent=errMsg(e)}};
 }
+let AUTH_UID=null;
 function showLock(){
-  const list=STAFF.filter(s=>s.active);if(!list.length){showSetup();return}
+  if(!DEMO&&AUTH_UID){const me=STAFF.find(x=>x.userId===AUTH_UID);if(me){signOutDevice();return}}
+  const list=STAFF.filter(s=>s.active&&!s.userId);if(!list.length){showSetup();return}
   if(list.length===1){showPin(list[0],false);return}
   PIN_KEY=null;
   gate(`${LOGO()}<p class="lead">เลือกพนักงาน</p><div class="staffPick">${list.map(s=>`<button data-pick="${esc(s.id)}"><span class="avatar">${esc(s.name.charAt(0).toUpperCase())}</span>${esc(s.name)}<small>${s.role==='ADMIN'?'แอดมิน':'แคชเชียร์'}</small></button>`).join('')}</div>`);
@@ -691,13 +706,16 @@ function loginAs(s){
   document.querySelectorAll('.adminOnly').forEach(x=>x.classList.toggle('hidden',!isAdmin()));
   if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();if(isAdmin())loadTgUI();
 }
-function lock(){USER=null;sessionStorage.removeItem(KP+'p3:user');closeCart();showLock()}
+async function signOutDevice(msg){USER=null;sessionStorage.removeItem(KP+'p3:user');closeCart();try{await sb.auth.signOut()}catch(e){}AUTH_UID=null;showShopLogin(msg||'')}
+async function lock(){
+  if(!DEMO&&USER&&USER.userId){if(!(await ask('ออกจากระบบ?','ต้องใส่ยูสและ PIN ใหม่เพื่อเข้าใช้','ออกจากระบบ',true)))return;signOutDevice();return}
+  USER=null;sessionStorage.removeItem(KP+'p3:user');closeCart();showLock()}
 
 /* ======================= SYNC ======================= */
 let REFRESH_T=null,SYNCING=false;
 async function refreshCloud(){
   try{const d=await API.loadAll();
-    const sid=USER&&USER.id;applyData(d);if(sid){const u=STAFF.find(x=>x.id===sid);if(!u||!u.active){lock();return}USER=u}
+    const sid=USER&&USER.id;applyData(d);if(sid){const u=STAFF.find(x=>x.id===sid);if(!u||!u.active){if(USER.userId)signOutDevice('บัญชีนี้ถูกปิดใช้งาน');else{USER=null;showLock()}return}USER=u}
     setOnline(true);CART=CART.filter(c=>prodById(c.id));renderAll();if(VIEW==='bills')renderBills();if(VIEW==='report')renderReport();
   }catch(e){if(isNetErr(e))setOnline(false);else console.warn(e)}
 }
@@ -987,24 +1005,35 @@ let STAFF_MODAL=null;
 function adminStaff(){
   STAFF_MODAL=modal({title:'พนักงาน',body:'<div id="stList"></div>',actions:[{label:'＋ เพิ่มพนักงาน',cls:'green',onClick:()=>editStaff(null)}],
     onOpen:a=>{a.redraw=()=>{a.el.querySelector('#stList').innerHTML=STAFF.map(s=>`<div class="row"><span class="avatar" style="width:42px;height:42px;font-size:16px;border-radius:13px">${esc(s.name.charAt(0).toUpperCase())}</span>
-      <div class="grow"><b>${esc(s.name)} <span class="tag ${s.role==='ADMIN'?'warn':''}">${s.role==='ADMIN'?'แอดมิน':'แคชเชียร์'}</span> ${s.active?'':'<span class="tag bad">ปิด</span>'}</b><small>เข้าด้วย PIN</small></div>
+      <div class="grow"><b>${esc(s.name)} <span class="tag ${s.role==='ADMIN'?'warn':''}">${s.role==='ADMIN'?'แอดมิน':'แคชเชียร์'}</span> ${s.active?'':'<span class="tag bad">ปิด</span>'}</b><small>${s.username?'ยูส: <b>'+esc(s.username)+'</b>':'เข้าด้วย PIN จากเครื่องร้าน'}</small></div>
       <button class="mini green" data-es="${esc(s.id)}">แก้</button></div>`).join('')};a.redraw();a.el.addEventListener('click',e=>{const b=e.target.closest('[data-es]');if(b)editStaff(b.dataset.es)})}});
   STAFF_MODAL.onClose=()=>{STAFF_MODAL=null};
 }
 async function editStaff(id){
-  const s=id?STAFF.find(x=>x.id===id):{role:'CASHIER',active:true};if(!s)return;
+  const cloud=API.kind==='cloud';
+  const s=id?STAFF.find(x=>x.id===id):{role:'CASHIER',active:true,userId:cloud?'new':null};if(!s)return;
+  const login=!!s.userId; // พนักงานแบบยูส + PIN 6 หลัก
   const v=await form(id?'แก้ไขพนักงาน':'เพิ่มพนักงาน',`<div class="field"><label>ชื่อพนักงาน</label><input id="fs-name" value="${esc(s.name||'')}" placeholder="เช่น สมชาย"></div>
+    ${login?`<div class="field"><label>ยูส (ใช้เข้าระบบ)</label><input id="fs-user" value="${esc(s.username||'')}" ${id?'disabled':''} autocapitalize="none" spellcheck="false" placeholder="เช่น slay11"><small>${id?'เปลี่ยนยูสไม่ได้':'a-z 0-9 . _ - อย่างน้อย 3 ตัว'}</small></div>`:''}
     <div class="fgrid"><div class="field"><label>สิทธิ์</label><select id="fs-role"><option value="CASHIER" ${s.role!=='ADMIN'?'selected':''}>แคชเชียร์ · ขาย</option><option value="ADMIN" ${s.role==='ADMIN'?'selected':''}>แอดมิน · จัดการ</option></select></div>
     <div class="field"><label>สถานะ</label><select id="fs-active"><option value="1" ${s.active!==false?'selected':''}>ใช้งาน</option><option value="0" ${s.active===false?'selected':''}>ปิด</option></select></div></div>
-    <div class="field"><label>${id?'PIN ใหม่ (เว้นว่าง = ใช้ของเดิม)':'PIN 4–6 หลัก'}</label><input id="fs-pin" type="password" inputmode="numeric" maxlength="6" placeholder="••••"></div>`,
-    'บันทึก',el=>{const g=k=>el.querySelector('#fs-'+k).value.trim(),d={name:g('name'),role:g('role'),active:g('active')==='1',pin:g('pin')};
-      if(!d.name)return 'กรุณากรอกชื่อ';if((!id||d.pin)&&!/^\d{4,6}$/.test(d.pin))return 'PIN ต้องเป็นตัวเลข 4–6 หลัก';
+    <div class="field"><label>${id?'PIN ใหม่ (เว้นว่าง = ใช้ของเดิม)':(login?'PIN 6 หลัก':'PIN 4–6 หลัก')}</label><input id="fs-pin" type="password" inputmode="numeric" maxlength="6" placeholder="${login?'••••••':'••••'}"></div>`,
+    'บันทึก',el=>{const g=k=>{const x=el.querySelector('#fs-'+k);return x?x.value.trim():''},d={name:g('name'),username:g('user').toLowerCase(),role:g('role'),active:g('active')==='1',pin:g('pin')};
+      if(!d.name)return 'กรุณากรอกชื่อ';
+      if(login&&!id&&!/^[a-z0-9._-]{3,30}$/.test(d.username))return 'ยูสใช้ a-z 0-9 . _ - อย่างน้อย 3 ตัว';
+      if(login&&!id&&STAFF.some(x=>(x.username||'')===d.username))return 'ยูสนี้มีอยู่แล้ว';
+      const pinRe=login?/^\d{6}$/:/^\d{4,6}$/;if((!id||d.pin)&&!pinRe.test(d.pin))return login?'PIN ต้องเป็นตัวเลข 6 หลัก':'PIN ต้องเป็นตัวเลข 4–6 หลัก';
       if(id&&s.role==='ADMIN'&&(d.role!=='ADMIN'||!d.active)&&!STAFF.some(x=>x.role==='ADMIN'&&x.active&&x.id!==id))return 'ต้องมีแอดมินที่ใช้งานอยู่อย่างน้อย 1 คน';return d});
   if(!v)return;
-  const rec={...s,id:id||uid(),name:v.name,role:v.role,active:v.active};if(v.pin)rec.pinHash=await sha(v.pin);
-  try{await guard(()=>API.upsertStaff(rec),'กำลังบันทึก...')}catch(e){return}
-  const i=STAFF.findIndex(x=>x.id===rec.id);if(i>-1)STAFF[i]=rec;else STAFF.push(rec);cacheSave();
-  if(USER&&USER.id===rec.id)USER=rec;STAFF_MODAL&&STAFF_MODAL.redraw();toast('บันทึกพนักงานแล้ว','ok');
+  try{await guard(async()=>{
+    if(login&&!id){await API.createStaffLogin(v.username,v.name,v.role,v.pin);return}
+    const rec={...s,name:v.name,role:v.role,active:login?s.active:v.active,id:id||uid()};if(v.pin&&!login)rec.pinHash=await sha(v.pin);
+    await API.upsertStaff(rec);
+    if(login&&v.pin)await API.setStaffPin(id,v.pin);
+    if(login&&v.active!==s.active)await API.setStaffActive(id,v.active);
+  },'กำลังบันทึก...')}catch(e){return}
+  await refreshCloud();if(DEMO){applyData(await API.loadAll())}
+  STAFF_MODAL&&STAFF_MODAL.redraw();toast('บันทึกพนักงานแล้ว','ok');
 }
 
 /* ======================= SHOP SETTINGS / TELEGRAM ======================= */
@@ -1282,6 +1311,7 @@ async function seedDemo(){
 /* ======================= BOOT ======================= */
 async function startApp(){
   loading(true,'กำลังโหลดข้อมูลร้าน...');
+  if(!DEMO){try{const {data:ss}=await sb.auth.getSession();AUTH_UID=ss&&ss.session&&ss.session.user.id}catch(e){}}
   if(!DEMO&&navigator.onLine){try{const {data:u}=await sb.auth.getUser();const r=await sb.from('members').select('user_id').eq('user_id',u.user.id).maybeSingle();
     if(!r.error&&!r.data){loading(false);gate(`${LOGO()}<p class="lead">บัญชีนี้ยังไม่ได้เปิดสิทธิ์ใช้ POS</p><div class="muted" style="text-align:center;margin-bottom:14px">${esc(u.user.email||'')}<br>ให้ผู้ดูแลเพิ่มบัญชีนี้ในตาราง pos.members</div><button class="btn block" id="nmOut">ออกจากระบบ</button>`);$('nmOut').onclick=async()=>{await sb.auth.signOut();location.reload()};return}}catch(e){}}
   try{applyData(await API.loadAll());setOnline(true)}
@@ -1289,8 +1319,10 @@ async function startApp(){
   loading(false);
   renderAll();
   API.subscribe(queueRefresh);
-  const sid=sessionStorage.getItem(KP+'p3:user'),s=STAFF.find(x=>x.id===sid&&x.active);
-  if(s)loginAs(s);else if(!STAFF.length)showSetup();else showLock();
+  const me=AUTH_UID&&STAFF.find(x=>x.userId===AUTH_UID);
+  if(me){if(me.active)loginAs(me);else signOutDevice('บัญชีนี้ถูกปิดใช้งาน')}
+  else{const sid=sessionStorage.getItem(KP+'p3:user'),s=STAFF.find(x=>x.id===sid&&x.active&&!x.userId);
+  if(s)loginAs(s);else if(!STAFF.length)showSetup();else showLock()}
   syncNow();
 }
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});

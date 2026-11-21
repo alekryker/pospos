@@ -163,3 +163,82 @@ $$;
 
 revoke execute on all functions in schema pos from public, anon;
 grant execute on all functions in schema pos to authenticated;
+
+-- =====================================================================
+-- บัญชีพนักงาน: เข้าด้วย "ยูส + PIN 6 หลัก" ได้เลย (ไม่ต้องใช้อีเมลร้าน)
+-- ภายในสร้างเป็นผู้ใช้ Supabase อีเมล <ยูส>@slay-pos.local รหัสผ่าน = PIN
+-- =====================================================================
+alter table pos.staff add column if not exists username text;
+alter table pos.staff add column if not exists user_id uuid references auth.users (id) on delete set null;
+create unique index if not exists pos_staff_username on pos.staff (lower(username)) where username is not null;
+alter table pos.members add column if not exists is_admin boolean default false;
+-- ตั้งเจ้าของร้านเป็นแอดมิน (แก้อีเมลก่อนรัน):
+-- update pos.members set is_admin = true where user_id in (select id from auth.users where lower(email) = 'อีเมลเจ้าของร้าน');
+
+create or replace function pos.is_admin() returns boolean
+language sql stable security definer set search_path = pos as $$
+  select exists (select 1 from pos.members where user_id = auth.uid() and is_admin)
+      or exists (select 1 from pos.staff where user_id = auth.uid() and role = 'ADMIN' and active);
+$$;
+
+create or replace function pos._create_login(p_username text, p_name text, p_role text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = pos, extensions as $$
+declare
+  uid uuid := gen_random_uuid();
+  em text := lower(p_username) || '@slay-pos.local';
+  sid text := 'u' || substr(replace(uid::text, '-', ''), 1, 12);
+begin
+  if p_username !~ '^[a-zA-Z0-9._-]{3,30}$' then raise exception 'ยูสใช้ได้เฉพาะ a-z 0-9 . _ - ความยาว 3-30 ตัว'; end if;
+  if p_pin !~ '^[0-9]{6}$' then raise exception 'PIN ต้องเป็นตัวเลข 6 หลัก'; end if;
+  if exists (select 1 from auth.users where email = em) or exists (select 1 from pos.staff where lower(username) = lower(p_username)) then
+    raise exception 'ยูส % มีอยู่แล้ว', p_username;
+  end if;
+  insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
+    raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
+    confirmation_token, recovery_token, email_change, email_change_token_new, email_change_token_current,
+    phone_change, phone_change_token, reauthentication_token)
+  values ('00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', em,
+    extensions.crypt(p_pin, extensions.gen_salt('bf')), now(),
+    '{"provider":"email","providers":["email"]}', '{"pos_staff":true}', now(), now(),
+    '', '', '', '', '', '', '', '');
+  insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
+  values (gen_random_uuid(), uid, uid::text, jsonb_build_object('sub', uid::text, 'email', em, 'email_verified', true), 'email', now(), now(), now());
+  insert into pos.members (user_id) values (uid);
+  insert into pos.staff (id, name, role, pin_hash, active, username, user_id)
+  values (sid, p_name, coalesce(nullif(p_role, ''), 'CASHIER'), '', true, lower(p_username), uid);
+  return jsonb_build_object('ok', true, 'id', sid);
+end $$;
+
+create or replace function pos.create_staff_login(p_username text, p_name text, p_role text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = pos as $$
+begin
+  if not pos.is_admin() then raise exception 'เฉพาะแอดมินเท่านั้น'; end if;
+  return pos._create_login(p_username, p_name, p_role, p_pin);
+end $$;
+
+create or replace function pos.set_staff_pin(p_staff text, p_pin text) returns jsonb
+language plpgsql security definer set search_path = pos, extensions as $$
+begin
+  if not pos.is_admin() then raise exception 'เฉพาะแอดมินเท่านั้น'; end if;
+  if p_pin !~ '^[0-9]{6}$' then raise exception 'PIN ต้องเป็นตัวเลข 6 หลัก'; end if;
+  update auth.users set encrypted_password = extensions.crypt(p_pin, extensions.gen_salt('bf')), updated_at = now()
+   where id = (select user_id from pos.staff where id = p_staff);
+  return jsonb_build_object('ok', true);
+end $$;
+
+create or replace function pos.set_staff_active(p_staff text, p_active boolean) returns jsonb
+language plpgsql security definer set search_path = pos as $$
+begin
+  if not pos.is_admin() then raise exception 'เฉพาะแอดมินเท่านั้น'; end if;
+  update pos.staff set active = p_active, updated_at = now() where id = p_staff;
+  update auth.users set banned_until = case when p_active then null else now() + interval '100 years' end
+   where id = (select user_id from pos.staff where id = p_staff);
+  return jsonb_build_object('ok', true);
+end $$;
+
+revoke execute on all functions in schema pos from public, anon;
+grant execute on all functions in schema pos to authenticated;
+revoke execute on function pos._create_login(text, text, text, text) from authenticated;
+
+-- สร้างพนักงานจาก SQL Editor (ตั้ง PIN เองก่อนรัน อย่าใส่ PIN จริงไว้ในไฟล์นี้):
+-- select pos._create_login('ยูส', 'ชื่อ', 'CASHIER', 'PIN 6 หลัก');
