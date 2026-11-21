@@ -437,7 +437,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="switch" style="margin-top:6px"><div><b>พิมพ์อัตโนมัติหลังขาย</b><small>เมื่อเชื่อมเครื่องพิมพ์แล้ว</small></div><label class="tg"><input type="checkbox" id="pAuto"><span></span></label></div>
         <div class="field" style="margin:8px 0 0"><label>ขนาดกระดาษ</label><div class="seg full" id="paperSeg"><button data-paper="58">58 มม.</button><button data-paper="80">80 มม.</button></div></div>
       </div>
-      <div class="card adminOnly" id="slipCard">
+      <div class="card adminOnly hidden" id="slipCard" style="display:none">
         <h4>ใบรายการสินค้าจากพนักงาน (Bluetooth)</h4>
         <p class="muted" style="font-size:13px;margin:0 0 10px">เมื่อพนักงานขายจากเครื่องไหนก็ได้ ใบรายการสินค้าจะพิมพ์ออกเครื่องพิมพ์บลูทูธตัวนี้อัตโนมัติ — เปิดแอปเครื่องนี้ค้างไว้</p>
         <div id="slipStatus" style="margin:0 0 8px;font-size:13.5px"></div>
@@ -1435,6 +1435,7 @@ async function slipPrint(s){const c=await slipCanvas(s),parts=[new Uint8Array([0
   parts.push(new Uint8Array([0x1B,0x64,0x04,0x1D,0x56,0x42,0x00]));for(const p of parts)await slipWrite(p)}
 const testSlip=()=>({billNo:'TEST',ts:Date.now(),staff:'พนักงานทดสอบ',note:'โต๊ะ 3',items:[{name:'เบียร์ช้าง ขวดใหญ่',qty:2},{name:'น้ำแข็งถัง',qty:1}]});
 async function slipPump(){
+  return; // ปิดใช้งานใบรายการสินค้าจากพนักงาน
   if(SLIP_BUSY||!DEV.slipOn||!USER||!isAdmin()||!(SLIP.connected||SLIP.device))return;
   const ids=STAFF.filter(x=>x.role!=='ADMIN').map(x=>x.id);if(!ids.length)return;
   SLIP_BUSY=true;let printed=0;
@@ -1448,7 +1449,7 @@ async function keepAwake(){try{if(DEV.slipOn&&navigator.wakeLock&&!SLIP_LOCK&&do
 function updateSlipUI(){const st=$('slipStatus');if(!st)return;document.querySelectorAll('#slipPaperSeg button').forEach(b=>b.classList.toggle('on',Number(b.dataset.slippaper)===(Number(DEV.slipPaper)===80?80:58)));$('slipOn').checked=!!DEV.slipOn;
   st.innerHTML=(SLIP.connected?`<span class="tag ok">เชื่อมแล้ว</span> ${esc(SLIP.name)}`:`<span class="tag warn">ยังไม่เชื่อม</span>${DEV.slipName?' '+esc(DEV.slipName):''}`)+(DEV.slipOn?' · <span class="tag ok">รับพิมพ์อยู่</span>':' · <span class="tag">ปิดรับพิมพ์</span>');
   $('slipBtn').textContent=SLIP.connected?'เชื่อมเครื่องอื่น':'เชื่อมบลูทูธ';keepAwake()}
-function initSlip(){updateSlipUI();setInterval(slipPump,15000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){keepAwake();slipPump()}});
+function initSlip(){DEV.slipOn=false;saveDev();return;updateSlipUI();setInterval(slipPump,15000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){keepAwake();slipPump()}});
   if(DEV.slipName&&hasBT()&&navigator.bluetooth.getDevices)navigator.bluetooth.getDevices().then(ds=>{const d=(ds||[]).find(x=>x.name===DEV.slipName);if(d)slipOpen(d).then(slipPump).catch(()=>{SLIP.device=d})}).catch(()=>{})}
 async function autoDrawer(){if(isAdmin()&&PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
 
