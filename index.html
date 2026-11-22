@@ -349,7 +349,9 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .spin{width:44px;height:44px;border-radius:50%;border:4px solid var(--raise2);border-top-color:var(--brand);animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 .demo{padding:5px;text-align:center;font-size:12px;font-weight:700;background:var(--warnSoft);color:var(--warn)}
-@media(max-width:440px){#themeBtn{display:none}}
+html{zoom:.9}
+#themeBtn{color:var(--ink)}
+@media(max-width:440px){.top{gap:6px;padding:10px 12px}.top .pill{padding:0 10px;max-width:28vw}}
 .toTop{position:fixed;right:16px;bottom:calc(170px + var(--safeB));z-index:42;width:46px;height:46px;border-radius:50%;border:1px solid var(--line2);background:var(--glass);backdrop-filter:blur(14px);color:var(--ink);display:grid;place-items:center;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .2s,transform .2s}
 .toTop svg{width:22px;height:22px}.toTop.on{opacity:1;transform:none;pointer-events:auto}
 @media(min-width:1000px){.toTop{bottom:calc(100px + var(--safeB))}}
