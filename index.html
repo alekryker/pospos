@@ -444,6 +444,7 @@ html{zoom:.9}
     <div class="page">
       <div class="h2">บิล<span class="sp"></span><input type="date" id="billDate" class="dateIn"></div>
       <div class="card"><h4>บิลที่พักไว้ (เครื่องนี้)</h4><div id="heldList"></div></div>
+      <div class="chips" id="billShift" style="padding:0 0 8px"></div>
       <div class="chips adminOnly" id="billStaff" style="padding:0 0 10px"></div>
       <div class="card"><h4><span id="billTitle">บิลขาย</span><span class="sp"></span><span id="billSum" class="tag"></span></h4><div id="billList"></div></div>
     </div>
@@ -452,6 +453,7 @@ html{zoom:.9}
   <section class="view" id="v-report">
     <div class="page">
       <div class="h2">รายงาน<span class="sp"></span><input type="date" id="dashDate" class="dateIn"></div>
+      <div class="chips" id="dashShift" style="padding:0 0 8px"></div>
       <div class="chips" id="dashStaff" style="padding:0 0 10px"></div>
       <div class="seg full" id="dashSeg" style="margin-bottom:12px"><button data-dash="DAY" class="on">วัน</button><button data-dash="WEEK">สัปดาห์</button><button data-dash="MONTH">เดือน</button></div>
       <div class="stats">
@@ -631,6 +633,7 @@ const LocalAPI={
   async currentShift(){return local.get('shift',null)},
   async openShift(sh){if(local.get('shift',null))throw new Error('มีกะเปิดอยู่แล้ว');local.set('shift',sh)},
   async closeShift(r){local.del('shift');await idbPut('dshifts',r)},
+  async shiftsOn(a,b){const cur=local.get('shift',null);return [...(await idbAll('dshifts')),...(cur?[cur]:[])].map(x=>({id:x.id,openedAt:x.openedAt,by:x.by,closedAt:x.closedAt||null,closedBy:x.closedBy||''})).filter(x=>x.openedAt<=b&&(!x.closedAt||x.closedAt>=a)).sort((x,y)=>x.openedAt-y.openedAt)},
   async tgStatus(){return local.get('tg',{on:false,chat:'',hasToken:false,staffOn:false,staffChat:''})},
   async setTelegram(on,chat,token,staffOn,staffChat){const t=local.get('tg',{});const n={on,chat:chat||t.chat||'',hasToken:!!(token||t.hasToken),staffOn:!!staffOn,staffChat:staffChat||''};local.set('tg',n);return n},
   async notify(msg,ch='admin'){console.log('[telegram ทดลอง → '+ch+']\n'+msg);(window.TG_LOG=window.TG_LOG||[]).push({ch,msg});return{ok:true}},
@@ -680,6 +683,7 @@ const CloudAPI={
   async pendingSlips(since,ids){if(!ids.length)return[];return chk(await sb.from('sales').select('*').eq('status','ok').is('slip_at',null).gte('ts',iso(since)).in('staff_id',ids).order('ts').limit(10)).map(db2sale)},
   async claimSlip(no,on=true){return !!chk(await sb.rpc('claim_slip',{p_bill:no,p_on:on}))},
   async currentShift(){return db2shift(chk(await sb.from('shifts').select('*').is('closed_at',null).maybeSingle()))},
+  async shiftsOn(a,b){return chk(await sb.from('shifts').select('id,opened_at,opened_by,closed_at,closed_by').lte('opened_at',iso(b)).or('closed_at.is.null,closed_at.gte."'+iso(a)+'"').order('opened_at').limit(50)).map(r=>({id:r.id,openedAt:Date.parse(r.opened_at),by:r.opened_by,closedAt:r.closed_at?Date.parse(r.closed_at):null,closedBy:r.closed_by||''}))},
   async openShift(sh){const r=await sb.from('shifts').insert({id:sh.id,opened_at:iso(sh.openedAt),opened_by:sh.by,opening_cash:sh.openingCash});
     if(r.error)throw new Error(/duplicate|unique/i.test(r.error.message)?'มีกะเปิดอยู่แล้ว (จากเครื่องอื่น)':r.error.message)},
   async closeShift(r){chk(await sb.from('shifts').update({closed_at:iso(r.closedAt),closed_by:r.closedBy,expected:r.expected,actual:r.actual,diff:r.diff,note:r.note,
@@ -1105,10 +1109,22 @@ const staffKey=s=>s.staffId||('name:'+(s.staff||'-'));
 let BILL_STAFF='',REPORT_STAFF='';
 function staffChips(el,cur){const list=[['','ทุกคน'],...STAFF.map(x=>[x.id,x.name+(x.role==='ADMIN'?' (แอดมิน)':'')])];
   $(el).innerHTML=list.map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-${el==='billStaff'?'bstaff':'rstaff'}="${esc(v)}">${esc(l)}</button>`).join('')}
+/* เลือกกะ: 'auto' = กะล่าสุดของวันนั้น, '' = ทั้งวัน */
+let BILL_SHIFT='auto',DASH_SHIFT='auto';
+const hm=t=>new Date(t).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
+async function shiftsOfDay(day){const a=new Date(day+'T00:00:00').getTime();try{return await API.shiftsOn(a,a+864e5-1)}catch(e){return[]}}
+function shiftLabel(x,i){return `กะ ${i+1} · ${hm(x.openedAt)}–${x.closedAt?hm(x.closedAt):'ตอนนี้'} · ${x.by||''}`}
+/* คืน [รายการบิล, กะที่เลือก|null] และวาดชิปกะ */
+async function salesByShift(el,day,sel,attr){const sh=await shiftsOfDay(day);
+  let cur=sel==='auto'?(sh.length?sh[sh.length-1].id:''):sel;if(cur&&!sh.some(x=>x.id===cur))cur='';
+  $(el).innerHTML=sh.length?[['','ทั้งวัน'],...sh.map((x,i)=>[x.id,shiftLabel(x,i)])].map(([v,l])=>`<button class="chip ${cur===v?'on':''}" data-${attr}="${esc(v)}">${v?'<i class="fi fi-rr-clock"></i> ':''}${esc(l)}</button>`).join(''):'';
+  const x=sh.find(y=>y.id===cur);
+  if(!x)return[await allSales(day,day),null];
+  const list=await allSales(dayKey(x.openedAt),dayKey(x.closedAt||Date.now()));return[list.filter(s=>s.shiftId===x.id),{...x,label:shiftLabel(x,sh.indexOf(x))}]}
 async function renderBills(){
-  const day=$('billDate').value||dayKey(Date.now());let list=(await allSales(day,day)).sort((a,b)=>b.ts-a.ts);
+  const day=$('billDate').value||dayKey(Date.now());let [list,shf]=await salesByShift('billShift',day,BILL_SHIFT,'bshift');list.sort((a,b)=>b.ts-a.ts);
   if(!isAdmin())list=list.filter(s=>staffKey(s)===USER.id);else{staffChips('billStaff',BILL_STAFF);if(BILL_STAFF)list=list.filter(s=>staffKey(s)===BILL_STAFF)}
-  $('billTitle').textContent=isAdmin()?(BILL_STAFF?'บิลของ '+((STAFF.find(x=>x.id===BILL_STAFF)||{}).name||''):'บิลขาย (ทุกคน)'):'บิลของฉัน';
+  $('billTitle').textContent=(isAdmin()?(BILL_STAFF?'บิลของ '+((STAFF.find(x=>x.id===BILL_STAFF)||{}).name||''):'บิลขาย (ทุกคน)'):'บิลของฉัน')+(shf?' · '+shf.label.split(' · ').slice(0,2).join(' '):' · ทั้งวัน');
   const ok=list.filter(s=>s.status!=='void');
   $('billSum').textContent=`${ok.length} บิล · ${money0(ok.reduce((a,s)=>a+s.net,0))}`;
   $('billList').innerHTML=list.length?list.map(s=>`<div class="row"><div class="grow"><b>${esc(s.billNo)} ${s.status==='void'?'<span class="tag bad">ยกเลิก</span>':''}${s.pending?'<span class="tag warn">รอส่ง</span>':''}</b>
@@ -1140,7 +1156,8 @@ function rangeOf(mode,ds){const d=ds?new Date(ds+'T00:00:00'):new Date();
   const s=new Date(d.getFullYear(),d.getMonth(),1),e=new Date(d.getFullYear(),d.getMonth()+1,0);return[dayKey(s),dayKey(e),s.toLocaleDateString('th-TH',{month:'long',year:'numeric'})]}
 async function renderReport(){
   if(!$('dashDate').value)$('dashDate').value=dayKey(Date.now());
-  const [from,to,label0]=rangeOf(DASH_MODE,$('dashDate').value),everything=await allSales(from,to);
+  let [from,to,label0]=rangeOf(DASH_MODE,$('dashDate').value),everything;
+  if(DASH_MODE==='DAY'){const [l,x]=await salesByShift('dashShift',from,DASH_SHIFT,'dshift');everything=l;if(x)label0+=' · '+x.label}else{$('dashShift').innerHTML='';everything=await allSales(from,to)}
   staffChips('dashStaff',REPORT_STAFF);
   const okAll=everything.filter(s=>s.status!=='void'),per={};
   okAll.forEach(s=>{const k=staffKey(s);per[k]=per[k]||{name:s.staff,bills:0,net:0,cash:0,qr:0,other:0};const p=per[k];p.bills++;p.net+=s.net;if(s.payment==='เงินสด')p.cash+=s.net;else if(s.payment==='QR')p.qr+=s.net;else p.other+=s.net});
@@ -1626,6 +1643,8 @@ function bindUI(){
     const dec=t.closest('[data-dec]');if(dec){changeQty(dec.dataset.dec,-1);return}
     const nv=t.closest('#nav [data-view]');if(nv){setView(nv.dataset.view);return}
     const dm=t.closest('[data-disc]');if(dm){setDisc(dm.dataset.disc);return}
+    const bsh=t.closest('[data-bshift]');if(bsh){BILL_SHIFT=bsh.dataset.bshift;renderBills();return}
+    const dsh=t.closest('[data-dshift]');if(dsh){DASH_SHIFT=dsh.dataset.dshift;renderReport();return}
     const bs=t.closest('[data-bstaff]');if(bs){BILL_STAFF=bs.dataset.bstaff;renderBills();return}
     const rsf=t.closest('[data-rstaff]');if(rsf){const k=rsf.dataset.rstaff;REPORT_STAFF=(REPORT_STAFF===k&&k)?'':k;renderReport();return}
     const ds=t.closest('[data-dash]');if(ds){DASH_MODE=ds.dataset.dash;document.querySelectorAll('#dashSeg button').forEach(b=>b.classList.toggle('on',b===ds));renderReport();return}
@@ -1652,7 +1671,7 @@ function bindUI(){
   $('q').addEventListener('input',renderGrid);$('discVal').addEventListener('input',renderCart);
   $('pAuto').addEventListener('change',e=>{DEV.autoPrint=e.target.checked;saveDev()});
   $('slipOn').addEventListener('change',e=>{DEV.slipOn=e.target.checked;if(DEV.slipOn)DEV.slipSince=Date.now();saveDev();updateSlipUI();slipPump()});
-  $('billDate').addEventListener('change',renderBills);$('dashDate').addEventListener('change',renderReport);
+  $('billDate').addEventListener('change',()=>{BILL_SHIFT='auto';renderBills()});$('dashDate').addEventListener('change',()=>{DASH_SHIFT='auto';renderReport()});
   document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCart()});
 }
 
