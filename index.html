@@ -243,7 +243,8 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .bars .bar b{color:var(--ink)}
 .bars .track{height:10px;border-radius:9px;background:var(--raise);overflow:hidden}
 .bars .fill{height:100%;border-radius:9px;background:var(--grad)}
-.userCard{display:flex;align-items:center;gap:14px}
+.userCard{display:flex;align-items:center;gap:14px;flex-wrap:wrap}.ucBtns{display:flex;gap:8px;flex:0 0 auto}
+@media(max-width:520px){.ucBtns{flex-basis:100%;justify-content:flex-end}}
 .avatar{width:50px;height:50px;border-radius:16px;background:var(--grad);color:var(--brandInk);display:grid;place-items:center;font-weight:800;font-size:20px;flex:0 0 auto}
 .field{margin-bottom:12px}
 .field label{display:block;margin-bottom:6px;font-size:13px;font-weight:600;color:var(--sub)}
@@ -426,8 +427,8 @@ main{padding-bottom:calc(104px + var(--safeB))}
       <div class="card userCard">
         <div class="avatar" id="uAvatar">?</div>
         <div style="flex:1;min-width:0"><b id="uName" style="display:block;font-size:16px">-</b><small id="uRole" class="muted">-</small></div>
-        <button class="mini" data-act="lock">สลับพนักงาน</button>
-        <button class="mini" style="color:var(--danger)" data-act="signOut">ออกจากระบบ</button>
+        <div class="ucBtns"><button class="mini" data-act="lock">สลับพนักงาน</button>
+        <button class="mini" style="color:var(--danger)" data-act="signOut">ออกจากระบบ</button></div>
       </div>
       <div class="secBack hidden" id="secBack"><button class="btn" data-sec-go="">‹ กลับหน้าหลังบ้าน</button><b id="secTitle"></b></div>
       <div class="card adminOnly" data-home>
