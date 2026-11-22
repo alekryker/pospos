@@ -84,6 +84,15 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:104px;padding:12px 6px;border-radius:18px;border:1px solid var(--line);background:var(--raise);color:var(--ink);font:inherit;cursor:pointer;text-align:center;transition:transform .12s}
 .tile:active{transform:scale(.96)}.tile span{font-size:28px;line-height:1}.tile b{font-size:14px;font-weight:700}.tile small{font-size:11px;color:var(--sub);line-height:1.3}
 .secBack{display:flex;align-items:center;gap:10px;margin:0 0 12px}.secBack.hidden{display:none}.secBack b{font-size:16px}
+.side{position:fixed;top:0;left:0;bottom:0;width:250px;z-index:75;display:flex;flex-direction:column;gap:2px;padding:14px 12px calc(14px + var(--safeB));background:var(--card);border-right:1px solid var(--line);overflow-y:auto;transform:translateX(-105%);transition:transform .25s ease;box-shadow:var(--shadow)}
+.side.open{transform:none}.sideHead{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 12px}.sideHead .brandImg{height:34px}
+.sideLbl{font-size:12px;font-weight:700;color:var(--sub);padding:14px 10px 4px;letter-spacing:.3px}
+.sideItem{display:flex;align-items:center;gap:12px;width:100%;height:46px;padding:0 12px;border:0;border-radius:13px;background:transparent;color:var(--ink);font:inherit;font-size:15px;font-weight:600;text-align:left;cursor:pointer}
+.sideItem span{width:24px;text-align:center;font-size:18px}.sideItem:hover{background:var(--raise)}.sideItem.on{background:var(--brandSoft);color:var(--brandText)}
+.sideScrim{position:fixed;inset:0;z-index:74;background:var(--scrim);opacity:0;pointer-events:none;transition:opacity .25s}.sideScrim.on{opacity:1;pointer-events:auto}
+.sideBtn,.side{display:none}body.hasSide .sideBtn{display:grid}body.hasSide .side{display:flex}
+@media(min-width:1100px){body.hasSide{padding-left:250px}body.hasSide .side{transform:none;box-shadow:none;z-index:35}body.hasSide .sideBtn,body.hasSide .sideX,body.hasSide .sideScrim{display:none}
+  body.hasSide .nav{left:calc(50% + 125px)}body.hasSide .top .logo .brandImg{display:none}}
 .srow{display:flex;gap:8px;align-items:stretch}.srow .search{flex:1;min-width:0}
 .drawerQuick{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:0 14px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:600;font-size:14px;cursor:pointer;box-shadow:var(--shadow-sm,none)}
 .drawerQuick svg{width:20px;height:20px}.drawerQuick:active{transform:scale(.97)}.drawerQuick.hidden{display:none}
@@ -346,7 +355,23 @@ main{padding-bottom:calc(104px + var(--safeB))}
 <div id="demoBar" class="demo hidden">โหมดทดลอง — ข้อมูลตัวอย่าง ไม่ได้ต่อฐานข้อมูลจริง</div>
 <div class="gate hidden" id="gate"><div class="gbox" id="gbox"></div></div>
 
+<aside class="side" id="side" aria-label="เมนูหลังบ้าน">
+  <div class="sideHead"><img class="brandImg" src="icons/logo-wide.png" alt="SLAY"><button class="iconBtn sideX" data-act="sideClose" aria-label="ปิดเมนู">✕</button></div>
+  <button class="sideItem" data-goview="sell" data-side="goview:sell"><span>🛒</span>ขายสินค้า</button>
+  <button class="sideItem" data-goview="bills" data-side="goview:bills"><span>🧾</span>บิลขาย</button>
+  <button class="sideItem" data-goview="report" data-side="goview:report"><span>📊</span>รายงาน</button>
+  <div class="sideLbl">หลังบ้าน</div>
+  <button class="sideItem" data-act="adminProducts" data-side="act:adminProducts"><span>📦</span>สินค้า</button>
+  <button class="sideItem" data-act="adminStaff" data-side="act:adminStaff"><span>👥</span>พนักงาน</button>
+  <button class="sideItem" data-sec-go="printer" data-side="sec:printer"><span>🖨</span>เครื่องพิมพ์</button>
+  <button class="sideItem" data-sec-go="shop" data-side="sec:shop"><span>🏪</span>ร้าน & ใบเสร็จ</button>
+  <button class="sideItem" data-sec-go="tg" data-side="sec:tg"><span>🔔</span>Telegram</button>
+  <button class="sideItem" data-act="dataTools" data-side="act:dataTools"><span>💾</span>ข้อมูล</button>
+  <button class="sideItem" data-sec-go="general" data-side="sec:general"><span>⚙️</span>ทั่วไป</button>
+</aside>
+<div class="sideScrim" id="sideScrim" data-act="sideClose"></div>
 <header class="top">
+  <button class="iconBtn sideBtn" data-act="sideOpen" aria-label="เมนู"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
   <div class="logo"><img class="brandImg" src="icons/logo-wide.png" alt="SLAY"><span><span id="shopTitle">POS</span><small id="staffLine">-</small></span></div>
   <div class="sp"></div>
   <button class="pill hidden" id="syncPill" data-act="sync"><span class="dot"></span><span>ซิงก์</span></button>
@@ -771,7 +796,8 @@ function loginAs(s){
   $('staffLine').textContent=s.name+(s.role==='ADMIN'?' · แอดมิน':' · แคชเชียร์');
   $('uName').textContent=s.name;$('uRole').textContent=(s.role==='ADMIN'?'ผู้ดูแลระบบ':'แคชเชียร์')+' · เครื่อง '+DEV.code;$('uAvatar').textContent=s.name.charAt(0).toUpperCase();
   document.querySelectorAll('.adminOnly').forEach(x=>x.classList.toggle('hidden',!isAdmin()));
-  if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();showSec('');if(isAdmin()){loadTgUI();setTimeout(keepImages,2500);setTimeout(slipPump,1500)}updateSlipUI&&updateSlipUI();
+  document.body.classList.toggle('hasSide',isAdmin());if(!isAdmin())sideClose();
+  if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();showSec('');markSide();if(isAdmin()){loadTgUI();setTimeout(keepImages,2500);setTimeout(slipPump,1500)}updateSlipUI&&updateSlipUI();
 }
 /* ย้ายรูปสินค้าที่เป็นลิงก์ภายนอก (เช่น go.pospos.co / Drive) มาเก็บใน Supabase Storage ถาวร — ทำเองเบื้องหลังเมื่อแอดมินเข้าใช้ */
 let IMG_BUSY=false;const IMG_FAIL=new Set();
@@ -1475,12 +1501,15 @@ async function autoDrawer(){if(isAdmin()&&PRINTER.connected&&['BT','WEBUSB','QZ'
 function loadSettingsUI(){const s=shop();$('rShop').value=s.shop||'';$('rHead').value=s.head||'';$('rFoot').value=s.foot||'';$('rNames').value=(s.noteNames||[]).join(', ');$('ppId').value=s.promptpay||'';$('pAuto').checked=!!DEV.autoPrint;
   $('shopTitle').textContent=s.shop||'POS';document.title=(s.shop||'POS')+' · POS';
   document.querySelectorAll('#paperSeg button').forEach(b=>b.classList.toggle('on',Number(b.dataset.paper)===Number(DEV.paper)));applyTheme()}
+function sideOpen(){$('side').classList.add('open');$('sideScrim').classList.add('on')}
+function sideClose(){$('side').classList.remove('open');$('sideScrim').classList.remove('on')}
+function markSide(){document.querySelectorAll('.sideItem').forEach(b=>{const [k,v]=b.dataset.side.split(':');b.classList.toggle('on',k==='goview'?(VIEW===v&&!(VIEW==='menu')):k==='sec'?(VIEW==='menu'&&MENU_SEC===v):false)})}
 let MENU_SEC='';const SEC_NAMES={printer:'🖨 เครื่องพิมพ์',shop:'🏪 ร้าน & ใบเสร็จ',tg:'🔔 Telegram',general:'⚙️ ทั่วไป'};
 function showSec(sec){const adm=isAdmin();MENU_SEC=adm?sec:'';
   document.querySelectorAll('#v-menu [data-sec]').forEach(c=>{c.style.display=!adm||c.dataset.sec===MENU_SEC?'':'none'});
   document.querySelectorAll('#v-menu [data-home]').forEach(c=>c.style.display=MENU_SEC?'none':'');
-  $('secBack').classList.toggle('hidden',!MENU_SEC);$('secTitle').textContent=SEC_NAMES[MENU_SEC]||'';window.scrollTo(0,0)}
-function setView(v){VIEW=v;if(v==='menu')setTimeout(()=>showSec(''),0);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));document.querySelectorAll('#nav [data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+  $('secBack').classList.toggle('hidden',!MENU_SEC);$('secTitle').textContent=SEC_NAMES[MENU_SEC]||'';window.scrollTo(0,0);markSide()}
+function setView(v){VIEW=v;if(v==='menu')setTimeout(()=>showSec(''),0);setTimeout(markSide,0);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));document.querySelectorAll('#nav [data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
   if(v!=='sell')closeCart();if(v==='bills'){renderHeld();renderBills()}if(v==='report')renderReport();if(v==='menu'){renderSync();if(isAdmin())loadTgUI()}renderCart();window.scrollTo(0,0)}
 function renderAll(){loadSettingsUI();renderChips();renderGrid();renderCart();renderHeld();renderShift();updatePrinterUI()}
 function bindUI(){
@@ -1504,8 +1533,9 @@ function bindUI(){
     const rs=t.closest('[data-restore]');if(rs){restoreHeld(Number(rs.dataset.restore));return}
     const dh=t.closest('[data-delheld]');if(dh){ask('ลบบิลที่พักนี้?','','ลบ',true).then(ok=>ok&&saveHeld(getHeld().filter(x=>x.id!==Number(dh.dataset.delheld))));return}
     const bl=t.closest('[data-bill]');if(bl){openBill(bl.dataset.bill);return}
-    const sg=t.closest('[data-sec-go]');if(sg){showSec(sg.dataset.secGo);return}
-    const gv=t.closest('[data-goview]');if(gv){setView(gv.dataset.goview);return}
+    const si=t.closest('.sideItem');if(si)sideClose();
+    const sg=t.closest('[data-sec-go]');if(sg){const v=sg.dataset.secGo;if(VIEW!=='menu'){setView('menu');setTimeout(()=>showSec(v),20)}else showSec(v);return}
+    const gv=t.closest('[data-goview]');if(gv){setView(gv.dataset.goview);markSide();return}
     const nn=t.closest('[data-nn]');if(nn){pickNoteName(nn.dataset.nn);return}
     const a=t.closest('[data-act]');if(!a)return;
     ({openCart,closeCart,hold:holdBill,clear:clearCart,pay:openPayment,shift:shiftDialog,lock,
@@ -1514,7 +1544,7 @@ function bindUI(){
       sync:async()=>{await syncNow();await refreshCloud();toast(ONLINE?'ซิงก์แล้ว':'ยังออฟไลน์',ONLINE?'ok':'warn')},
       signOut:async()=>{if(!(await ask('ออกจากระบบ?',DEMO?'กลับไปหน้าเลือกพนักงาน':'ต้องเข้าสู่ระบบใหม่ (ยูส + PIN หรืออีเมลร้าน) เพื่อใช้งาน','ออกจากระบบ',true)))return;
         if(DEMO){USER=null;sessionStorage.removeItem(KP+'p3:user');closeCart();showLock();return}signOutDevice()},
-      saveShop:saveShopUI,slipConnect:slipConnectUI,slipTest:()=>slipPrint(testSlip()).then(()=>toast('พิมพ์ทดสอบแล้ว','ok')).catch(e=>toast(errMsg(e),'err')),tgSave,tgTest:()=>tgTest(a.dataset.ch||'admin'),tgFind,connectPrinter,testPrint:()=>printReceipt(testReceipt()),drawer:openDrawerManual,adminProducts,adminStaff,dataTools})[a.dataset.act]?.();
+      saveShop:saveShopUI,sideOpen,sideClose,slipConnect:slipConnectUI,slipTest:()=>slipPrint(testSlip()).then(()=>toast('พิมพ์ทดสอบแล้ว','ok')).catch(e=>toast(errMsg(e),'err')),tgSave,tgTest:()=>tgTest(a.dataset.ch||'admin'),tgFind,connectPrinter,testPrint:()=>printReceipt(testReceipt()),drawer:openDrawerManual,adminProducts,adminStaff,dataTools})[a.dataset.act]?.();
   });
   $('q').addEventListener('input',renderGrid);$('discVal').addEventListener('input',renderCart);
   $('pAuto').addEventListener('change',e=>{DEV.autoPrint=e.target.checked;saveDev()});
