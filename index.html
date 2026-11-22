@@ -79,6 +79,11 @@ main{padding-bottom:calc(104px + var(--safeB))}
 @media (min-width:1000px){.sellLayout{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:22px;padding:0 22px;align-items:start}.sellLayout .tools,.sellLayout .grid{padding-left:0;padding-right:0}}
 .tools{position:sticky;top:61px;z-index:20;padding:14px 18px 6px;background:linear-gradient(var(--bg) 78%,transparent)}
 .search{position:relative}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(min-width:700px){.tiles{grid-template-columns:repeat(5,1fr)}}
+.tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:104px;padding:12px 6px;border-radius:18px;border:1px solid var(--line);background:var(--raise);color:var(--ink);font:inherit;cursor:pointer;text-align:center;transition:transform .12s}
+.tile:active{transform:scale(.96)}.tile span{font-size:28px;line-height:1}.tile b{font-size:14px;font-weight:700}.tile small{font-size:11px;color:var(--sub);line-height:1.3}
+.secBack{display:flex;align-items:center;gap:10px;margin:0 0 12px}.secBack.hidden{display:none}.secBack b{font-size:16px}
 .srow{display:flex;gap:8px;align-items:stretch}.srow .search{flex:1;min-width:0}
 .drawerQuick{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:0 14px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:600;font-size:14px;cursor:pointer;box-shadow:var(--shadow-sm,none)}
 .drawerQuick svg{width:20px;height:20px}.drawerQuick:active{transform:scale(.97)}.drawerQuick.hidden{display:none}
@@ -424,11 +429,26 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <button class="mini" data-act="lock">สลับพนักงาน</button>
         <button class="mini" style="color:var(--danger)" data-act="signOut">ออกจากระบบ</button>
       </div>
-      <div class="card"><h4>กะการขาย</h4><div id="shiftBox"></div></div>
-      <div class="card"><h4>การเชื่อมต่อ</h4><div id="connBox"></div></div>
-      <div class="card"><h4>ธีม</h4>
+      <div class="secBack hidden" id="secBack"><button class="btn" data-sec-go="">‹ กลับหน้าหลังบ้าน</button><b id="secTitle"></b></div>
+      <div class="card adminOnly" data-home>
+        <h4>หลังบ้าน (เจ้าของร้าน)</h4>
+        <div class="tiles">
+          <button class="tile" data-act="adminProducts"><span>📦</span><b>สินค้า</b><small>ราคา สต๊อก รูป</small></button>
+          <button class="tile" data-act="adminStaff"><span>👥</span><b>พนักงาน</b><small>ยูส PIN สิทธิ์</small></button>
+          <button class="tile" data-goview="report"><span>📊</span><b>รายงาน</b><small>ยอดขายรายคน</small></button>
+          <button class="tile" data-goview="bills"><span>🧾</span><b>บิลขาย</b><small>ดู ยกเลิก พิมพ์ซ้ำ</small></button>
+          <button class="tile" data-sec-go="printer"><span>🖨</span><b>เครื่องพิมพ์</b><small>USB บลูทูธ ลิ้นชัก</small></button>
+          <button class="tile" data-sec-go="shop"><span>🏪</span><b>ร้าน &amp; ใบเสร็จ</b><small>ชื่อ พร้อมเพย์ รายชื่อ</small></button>
+          <button class="tile" data-sec-go="tg"><span>🔔</span><b>Telegram</b><small>แจ้งเตือน 2 กลุ่ม</small></button>
+          <button class="tile" data-act="dataTools"><span>💾</span><b>ข้อมูล</b><small>นำเข้า สำรอง CSV</small></button>
+          <button class="tile" data-sec-go="general"><span>⚙️</span><b>ทั่วไป</b><small>กะ ธีม การเชื่อมต่อ</small></button>
+        </div>
+      </div>
+      <div class="card" data-sec="general"><h4>กะการขาย</h4><div id="shiftBox"></div></div>
+      <div class="card" data-sec="general"><h4>การเชื่อมต่อ</h4><div id="connBox"></div></div>
+      <div class="card" data-sec="general"><h4>ธีม</h4>
         <div class="seg full" id="themeSeg"><button data-theme="light">☀️ สว่าง</button><button data-theme="dark">🌙 มืด</button><button data-theme="auto">อัตโนมัติ</button></div></div>
-      <div class="card adminOnly" id="printerCard">
+      <div class="card adminOnly" id="printerCard" data-sec="printer">
         <h4>เครื่องพิมพ์ใบเสร็จ (เครื่องนี้)</h4>
         <div class="opts" id="pModes"></div>
         <div id="pStatus" style="margin:12px 0 4px;font-size:13.5px"></div>
@@ -437,7 +457,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="switch" style="margin-top:6px"><div><b>พิมพ์อัตโนมัติหลังขาย</b><small>เมื่อเชื่อมเครื่องพิมพ์แล้ว</small></div><label class="tg"><input type="checkbox" id="pAuto"><span></span></label></div>
         <div class="field" style="margin:8px 0 0"><label>ขนาดกระดาษ</label><div class="seg full" id="paperSeg"><button data-paper="58">58 มม.</button><button data-paper="80">80 มม.</button></div></div>
       </div>
-      <div class="card adminOnly" id="slipCard">
+      <div class="card adminOnly" id="slipCard" data-sec="printer">
         <h4>ใบเสร็จบิลพนักงาน (Bluetooth)</h4>
         <p class="muted" style="font-size:13px;margin:0 0 10px">เมื่อพนักงานขายจากเครื่องไหนก็ได้ ใบเสร็จจะพิมพ์ออกเครื่องพิมพ์บลูทูธตัวนี้อัตโนมัติ — เปิดแอปเครื่องนี้ค้างไว้</p>
         <div id="slipStatus" style="margin:0 0 8px;font-size:13.5px"></div>
@@ -445,7 +465,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="switch" style="margin-top:6px"><div><b>รับพิมพ์ใบเสร็จบิลพนักงาน</b><small>ที่เครื่องนี้</small></div><label class="tg"><input type="checkbox" id="slipOn"><span></span></label></div>
         <div class="field" style="margin:8px 0 0"><label>ขนาดกระดาษเครื่องบลูทูธ</label><div class="seg full" id="slipPaperSeg"><button data-slippaper="58">58 มม.</button><button data-slippaper="80">80 มม.</button></div></div>
       </div>
-      <div class="card adminOnly">
+      <div class="card adminOnly" data-sec="shop">
         <h4>ร้าน และใบเสร็จ (ใช้ร่วมทุกเครื่อง)</h4>
         <div class="field"><label>ชื่อร้าน</label><input id="rShop" placeholder="POS"></div>
         <div class="field"><label>ที่อยู่ / เบอร์โทร (ขึ้นบรรทัดใหม่ได้)</label><textarea id="rHead" placeholder="เช่น 123 ถ.สุขุมวิท โทร 08x-xxx-xxxx"></textarea></div>
@@ -454,7 +474,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
         <div class="field"><label>พร้อมเพย์ (เบอร์โทร / เลขบัตรประชาชน)</label><input id="ppId" inputmode="numeric" placeholder="0646283140"><small>QR ล็อกยอดตามบิล และพิมพ์ลงใบเสร็จเมื่อชำระด้วย QR</small></div>
         <button class="btn green block" data-act="saveShop">บันทึก</button>
       </div>
-      <div class="card adminOnly" id="tgCard">
+      <div class="card adminOnly" id="tgCard" data-sec="tg">
         <h4>แจ้งเตือน Telegram<span class="sp"></span><span class="tag" id="tgInfo">-</span></h4>
         <div class="field"><label>Bot Token (ใช้บอทตัวเดียวกันทั้ง 2 กลุ่ม)</label><input id="tgToken" type="password" autocomplete="off" placeholder="123456:ABC-..."><small>เก็บในฐานข้อมูล หน้าเว็บอ่านกลับไม่ได้ · สร้างบอทได้ที่ @BotFather</small></div>
         <button class="btn block" data-act="tgFind" style="margin-bottom:12px">🔍 หากลุ่มที่บอทอยู่ (ดึง Chat ID ให้อัตโนมัติ)</button>
@@ -470,12 +490,6 @@ main{padding-bottom:calc(104px + var(--safeB))}
         </div>
         <button class="btn green block" data-act="tgSave">บันทึกการตั้งค่า Telegram</button>
         <p class="muted" style="font-size:12px;margin-top:10px;line-height:1.7">วิธีตั้งค่า: 1) เพิ่มบอทเข้ากลุ่ม Telegram ทั้ง 2 กลุ่ม 2) พิมพ์ข้อความอะไรก็ได้ในแต่ละกลุ่ม 3) ใส่ Token แล้วกด "หากลุ่มที่บอทอยู่" เลือกกลุ่ม 4) กดบันทึก</p>
-      </div>
-      <div class="card adminOnly">
-        <h4>จัดการร้าน</h4>
-        <button class="menuItem" data-act="adminProducts"><span class="ic">📦</span><span class="grow"><b>สินค้า</b><small>เพิ่ม แก้ไข ราคา สต๊อก รูป</small></span><span class="chev">›</span></button>
-        <button class="menuItem" data-act="adminStaff"><span class="ic">👥</span><span class="grow"><b>พนักงาน</b><small>ชื่อ PIN และสิทธิ์</small></span><span class="chev">›</span></button>
-        <button class="menuItem" data-act="dataTools"><span class="ic">💾</span><span class="grow"><b>ข้อมูล</b><small>นำเข้าสินค้า ย้ายข้อมูลเก่า สำรอง ส่งออก CSV</small></span><span class="chev">›</span></button>
       </div>
     </div>
   </section>
@@ -756,7 +770,7 @@ function loginAs(s){
   $('staffLine').textContent=s.name+(s.role==='ADMIN'?' · แอดมิน':' · แคชเชียร์');
   $('uName').textContent=s.name;$('uRole').textContent=(s.role==='ADMIN'?'ผู้ดูแลระบบ':'แคชเชียร์')+' · เครื่อง '+DEV.code;$('uAvatar').textContent=s.name.charAt(0).toUpperCase();
   document.querySelectorAll('.adminOnly').forEach(x=>x.classList.toggle('hidden',!isAdmin()));
-  if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();if(isAdmin()){loadTgUI();setTimeout(keepImages,2500);setTimeout(slipPump,1500)}updateSlipUI&&updateSlipUI();
+  if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();showSec('');if(isAdmin()){loadTgUI();setTimeout(keepImages,2500);setTimeout(slipPump,1500)}updateSlipUI&&updateSlipUI();
 }
 /* ย้ายรูปสินค้าที่เป็นลิงก์ภายนอก (เช่น go.pospos.co / Drive) มาเก็บใน Supabase Storage ถาวร — ทำเองเบื้องหลังเมื่อแอดมินเข้าใช้ */
 let IMG_BUSY=false;const IMG_FAIL=new Set();
@@ -1460,7 +1474,12 @@ async function autoDrawer(){if(isAdmin()&&PRINTER.connected&&['BT','WEBUSB','QZ'
 function loadSettingsUI(){const s=shop();$('rShop').value=s.shop||'';$('rHead').value=s.head||'';$('rFoot').value=s.foot||'';$('rNames').value=(s.noteNames||[]).join(', ');$('ppId').value=s.promptpay||'';$('pAuto').checked=!!DEV.autoPrint;
   $('shopTitle').textContent=s.shop||'POS';document.title=(s.shop||'POS')+' · POS';
   document.querySelectorAll('#paperSeg button').forEach(b=>b.classList.toggle('on',Number(b.dataset.paper)===Number(DEV.paper)));applyTheme()}
-function setView(v){VIEW=v;document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));document.querySelectorAll('#nav [data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
+let MENU_SEC='';const SEC_NAMES={printer:'🖨 เครื่องพิมพ์',shop:'🏪 ร้าน & ใบเสร็จ',tg:'🔔 Telegram',general:'⚙️ ทั่วไป'};
+function showSec(sec){const adm=isAdmin();MENU_SEC=adm?sec:'';
+  document.querySelectorAll('#v-menu [data-sec]').forEach(c=>{c.style.display=!adm||c.dataset.sec===MENU_SEC?'':'none'});
+  document.querySelectorAll('#v-menu [data-home]').forEach(c=>c.style.display=MENU_SEC?'none':'');
+  $('secBack').classList.toggle('hidden',!MENU_SEC);$('secTitle').textContent=SEC_NAMES[MENU_SEC]||'';window.scrollTo(0,0)}
+function setView(v){VIEW=v;if(v==='menu')setTimeout(()=>showSec(''),0);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));document.querySelectorAll('#nav [data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
   if(v!=='sell')closeCart();if(v==='bills'){renderHeld();renderBills()}if(v==='report')renderReport();if(v==='menu'){renderSync();if(isAdmin())loadTgUI()}renderCart();window.scrollTo(0,0)}
 function renderAll(){loadSettingsUI();renderChips();renderGrid();renderCart();renderHeld();renderShift();updatePrinterUI()}
 function bindUI(){
@@ -1484,11 +1503,13 @@ function bindUI(){
     const rs=t.closest('[data-restore]');if(rs){restoreHeld(Number(rs.dataset.restore));return}
     const dh=t.closest('[data-delheld]');if(dh){ask('ลบบิลที่พักนี้?','','ลบ',true).then(ok=>ok&&saveHeld(getHeld().filter(x=>x.id!==Number(dh.dataset.delheld))));return}
     const bl=t.closest('[data-bill]');if(bl){openBill(bl.dataset.bill);return}
+    const sg=t.closest('[data-sec-go]');if(sg){showSec(sg.dataset.secGo);return}
+    const gv=t.closest('[data-goview]');if(gv){setView(gv.dataset.goview);return}
     const nn=t.closest('[data-nn]');if(nn){pickNoteName(nn.dataset.nn);return}
     const a=t.closest('[data-act]');if(!a)return;
     ({openCart,closeCart,hold:holdBill,clear:clearCart,pay:openPayment,shift:shiftDialog,lock,
       theme:()=>{DEV.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';saveDev();applyTheme()},
-      goPrinter:()=>{setView('menu');setTimeout(()=>$('printerCard').scrollIntoView({behavior:'smooth',block:'start'}),60)},
+      goPrinter:()=>{setView('menu');setTimeout(()=>showSec('printer'),10)},
       sync:async()=>{await syncNow();await refreshCloud();toast(ONLINE?'ซิงก์แล้ว':'ยังออฟไลน์',ONLINE?'ok':'warn')},
       signOut:async()=>{if(!(await ask('ออกจากระบบ?',DEMO?'กลับไปหน้าเลือกพนักงาน':'ต้องเข้าสู่ระบบใหม่ (ยูส + PIN หรืออีเมลร้าน) เพื่อใช้งาน','ออกจากระบบ',true)))return;
         if(DEMO){USER=null;sessionStorage.removeItem(KP+'p3:user');closeCart();showLock();return}signOutDevice()},
