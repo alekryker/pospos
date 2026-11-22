@@ -974,9 +974,13 @@ async function checkout(){
     notifyTg(tgSale(s),'admin');if(USER.role!=='ADMIN')notifyTg(tgSale(s),'staff');
   }catch(e){toast('บันทึกบิลไม่สำเร็จ: '+errMsg(e),'err')}finally{BUSY=false;renderCart();renderSync()}
 }
-function showDone(s){modal({title:'',closable:false,body:`<div class="done"><div class="ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+function showDone(s){let T=null;const stop=()=>{if(T){clearInterval(T);T=null}};modal({title:'',closable:false,body:`<div class="done"><div class="ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
   <h3>ชำระเงินสำเร็จ</h3><div class="bill">บิล ${esc(s.billNo)} · ${esc(s.payment)} · ${money(s.net)}</div>${s.payment==='เงินสด'?`<div class="chg"><small>เงินทอน</small><b class="num">${money(s.change)}</b></div>`:''}</div>`,
-  actions:[...(isAdmin()?[{label:'🖨 พิมพ์ใบเสร็จ',onClick:()=>printReceipt(receiptOf(s))}]:[]),{label:'บิลใหม่',cls:'green',onClick:a=>a.close()}]})}
+  actions:[...(isAdmin()?[{label:'🖨 พิมพ์ใบเสร็จ',onClick:()=>{stop();printReceipt(receiptOf(s))}}]:[]),{label:'บิลใหม่ (3)',cls:'green',onClick:a=>{stop();a.close();backToSell()}}],
+  onOpen:a=>{let n=3;const btn=[...a.el.querySelectorAll('button')].find(b=>b.textContent.startsWith('บิลใหม่'));
+    T=setInterval(()=>{n--;if(btn)btn.textContent=`บิลใหม่ (${Math.max(n,0)})`;if(n<=0){stop();a.close();backToSell()}},1000)}});
+}
+function backToSell(){closeCart();if(VIEW!=='sell')setView('sell');window.scrollTo(0,0)}
 function lowStockAlert(s){const l=s.items.map(i=>prodById(i.id)).filter(p=>p&&Number(p.low)>0&&Number(p.stock)<=Number(p.low));if(l.length)notifyTg('⚠️ <b>สต๊อกใกล้หมด</b>\n'+l.map(p=>`• ${tgEsc(p.name)} เหลือ ${p.stock}`).join('\n'))}
 
 /* ======================= BILLS ======================= */
