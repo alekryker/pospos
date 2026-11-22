@@ -140,7 +140,7 @@ main{padding:6px 16px 0}
   <div class="sh"><b id="cartTitle"></b><button class="x" id="closeCart" aria-label="close"><i class="fi fi-rr-cross-small"></i></button></div>
   <div class="lines" id="lines"></div>
   <div class="sf">
-    <div class="field" id="tblField" hidden><label id="tblLabel"></label><input id="tblInput" inputmode="numeric" maxlength="10"></div>
+    <div class="field" id="tblField" hidden><label id="tblLabel"></label><input id="tblInput" maxlength="20"></div>
     <div class="field"><label id="noteLabel"></label><textarea id="note" rows="2" maxlength="200"></textarea></div>
     <div class="tot"><span id="totLabel"></span><b id="tot">฿0</b></div>
     <button class="cta" id="send"><i class="fi fi-rr-check"></i><span id="sendLabel"></span></button>
@@ -168,7 +168,7 @@ const T={
     tblAsk:'Table number',tblNeed:'Please enter your table number',empty:'No items found',sending:'Sending order...',doneT:'Order sent',doneS:'The shop has received your order',orderNo:'Order no.',donePay:'Please pay at the counter',more:'Order more',err:'Could not send',loadErr:'Could not load the menu. Please try again.',rm:'Remove'}
 };
 const qs=new URLSearchParams(location.search);
-let TABLE=(qs.get('t')||qs.get('table')||'').trim().slice(0,10);
+let TABLE=(qs.get('t')||qs.get('table')||'').trim().slice(0,20);
 let LANG=localStorage.getItem('qr:lang')||((navigator.language||'th').startsWith('th')?'th':'en');
 let MENU=[],SHOP='',CHIP='rec',Q='';
 const CK='qr:cart:'+(TABLE||'-');
@@ -224,7 +224,7 @@ function applyLang(){document.documentElement.lang=LANG;document.querySelectorAl
   const tb=$('tbl');tb.hidden=!TABLE;tb.lastElementChild.textContent=t('table')+' '+TABLE;$('tblField').hidden=!!TABLE;
   if(MENU.length){renderChips();render()}}
 async function send(){
-  if(!TABLE){const v=$('tblInput').value.trim();if(!v){toast(t('tblNeed'),true);$('tblInput').focus();return}TABLE=v.slice(0,10)}
+  if(!TABLE){const v=$('tblInput').value.trim();if(!v){toast(t('tblNeed'),true);$('tblInput').focus();return}TABLE=v.slice(0,20)}
   const items=Object.entries(CART).filter(([id])=>byId(id)).map(([id,qty])=>({id,qty}));if(!items.length)return;
   const b=$('send');b.disabled=true;$('sendLabel').textContent=t('sending');
   try{const r=await rpc('place_order',{p_table:TABLE,p_items:items,p_note:$('note').value.trim(),p_lang:LANG});
