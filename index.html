@@ -151,7 +151,7 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .pstock.low{color:var(--warn);background:var(--warnSoft)}.pstock.zero{color:var(--danger);background:var(--dangerSoft)}
 .badge{position:absolute;z-index:2;top:8px;right:8px;min-width:32px;height:32px;padding:0 9px;border-radius:999px;background:var(--grad);color:var(--brandInk);font-weight:800;font-size:15px;display:grid;place-items:center;box-shadow:0 6px 16px color-mix(in srgb,var(--brand) 45%,transparent);animation:pop .25s cubic-bezier(.3,1.6,.5,1)}
 @keyframes pop{from{transform:scale(.4)}to{transform:scale(1)}}
-.minus{position:absolute;z-index:2;top:8px;left:8px;width:32px;height:32px;border-radius:999px;background:rgba(18,19,22,.78);color:#fff;font-size:20px;font-weight:600;display:grid;place-items:center}
+.minus::after{content:'';position:absolute;inset:-12px;border-radius:999px}.minus{touch-action:manipulation;cursor:pointer;position:absolute;z-index:3;top:8px;left:8px;width:32px;height:32px;border-radius:999px;background:rgba(18,19,22,.78);color:#fff;font-size:20px;font-weight:600;display:grid;place-items:center}
 .empty{grid-column:1/-1;text-align:center;color:var(--sub);padding:56px 20px;font-size:14px}
 .empty b{display:block;font-size:34px;margin-bottom:8px}
 
@@ -1518,11 +1518,15 @@ function showSec(sec){const adm=isAdmin();MENU_SEC=adm?sec:'';
 function setView(v){VIEW=v;if(v==='menu')setTimeout(()=>showSec(''),0);setTimeout(markSide,0);document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));document.querySelectorAll('#nav [data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===v));
   if(v!=='sell')closeCart();if(v==='bills'){renderHeld();renderBills()}if(v==='report')renderReport();if(v==='menu'){renderSync();if(isAdmin())loadTgUI()}renderCart();window.scrollTo(0,0)}
 function renderAll(){loadSettingsUI();renderChips();renderGrid();renderCart();renderHeld();renderShift();updatePrinterUI()}
+let MINUS_AT=0,MINUS_ID='';
+// ปุ่มลบบนการ์ด: ทำงานทันทีที่นิ้วแตะ (กันมือถือนับเป็นการแตะการ์ดแล้วเพิ่มสินค้า)
+document.addEventListener('pointerdown',e=>{const mi=e.target.closest&&e.target.closest('[data-minus]');if(!mi||e.button>0)return;
+  e.preventDefault();MINUS_AT=Date.now();MINUS_ID=mi.dataset.minus;changeQty(MINUS_ID,-1)},true);
 function bindUI(){
   document.addEventListener('click',e=>{
     const t=e.target;if(t.closest('.modal')||t.closest('#gate'))return;
-    const mi=t.closest('[data-minus]');if(mi){e.preventDefault();e.stopPropagation();changeQty(mi.dataset.minus,-1);return}
-    const ad=t.closest('[data-add]');if(ad){add(ad.dataset.add);return}
+    const mi=t.closest('[data-minus]');if(mi){e.preventDefault();e.stopPropagation();if(Date.now()-MINUS_AT>700)changeQty(mi.dataset.minus,-1);return}
+    const ad=t.closest('[data-add]');if(ad){if(Date.now()-MINUS_AT<700&&MINUS_ID===ad.dataset.add)return;add(ad.dataset.add);return}
     const ca=t.closest('[data-cat]');if(ca){CAT=ca.dataset.cat;renderChips();renderGrid();return}
     const ld=t.closest('[data-ldisc]');if(ld){lineDiscount(ld.dataset.ldisc);return}
     const inc=t.closest('[data-inc]');if(inc){changeQty(inc.dataset.inc,1);return}
