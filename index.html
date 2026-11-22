@@ -527,7 +527,7 @@ html{zoom:.9}
         <div class="field"><label>Bot Token (ใช้บอทตัวเดียวกันทั้ง 2 กลุ่ม)</label><input id="tgToken" type="password" autocomplete="off" placeholder="123456:ABC-..."><small>เก็บในฐานข้อมูล หน้าเว็บอ่านกลับไม่ได้ · สร้างบอทได้ที่ @BotFather</small></div>
         <button class="btn block" data-act="tgFind" style="margin-bottom:12px"><i class="fi fi-rr-search"></i> หากลุ่มที่บอทอยู่ (ดึง Chat ID ให้อัตโนมัติ)</button>
         <div class="card soft" style="margin-bottom:10px">
-          <div class="switch" style="padding-top:0"><div><b><i class="fi fi-rr-crown"></i> กลุ่มแอดมิน</b><small>ทุกบิลขาย · ยกเลิกบิล · ปิดกะ + สรุปยอดรายพนักงาน</small></div><label class="tg"><input type="checkbox" id="tgOn"><span></span></label></div>
+          <div class="switch" style="padding-top:0"><div><b><i class="fi fi-rr-crown"></i> กลุ่มแอดมิน</b><small>บิลที่แอดมินขาย · ยกเลิกบิล · ปิดกะ + สรุปยอดรายพนักงาน (บิลพนักงานไปกลุ่มพนักงานเท่านั้น)</small></div><label class="tg"><input type="checkbox" id="tgOn"><span></span></label></div>
           <div class="field"><label>Chat ID กลุ่มแอดมิน</label><input id="tgChat" placeholder="-100..."></div>
           <button class="btn block" data-act="tgTest" data-ch="admin">ส่งทดสอบกลุ่มแอดมิน</button>
         </div>
@@ -1082,7 +1082,7 @@ async function checkout(){
     resetBill();renderChips();showDone(s);
     if(payment==='เงินสด'||payment==='QR')autoDrawer();
     if(isAdmin()&&PRINTER.connected&&DEV.autoPrint)setTimeout(()=>printReceipt(receiptOf(s)),250);
-    notifyTg(tgSale(s),'admin');if(USER.role!=='ADMIN')notifyTg(tgSale(s),'staff');
+    notifyTg(tgSale(s),USER.role==='ADMIN'?'admin':'staff');
   }catch(e){toast('บันทึกบิลไม่สำเร็จ: '+errMsg(e),'err')}finally{BUSY=false;renderCart();renderSync()}
 }
 function showDone(s){let T=null;const stop=()=>{if(T){clearInterval(T);T=null}};modal({title:'',closable:false,body:`<div class="done"><div class="ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
