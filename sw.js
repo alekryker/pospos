@@ -1,5 +1,5 @@
 /* POS247 service worker — เปิดแอปได้แม้ออฟไลน์ (ข้อมูลร้านซิงก์แยกต่างหาก) */
-const CACHE = 'pos247-v3';
+const CACHE = 'pos247-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/logo-wide.png'];
 
 self.addEventListener('install', e => {
@@ -12,9 +12,10 @@ self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET' || /supabase\.co$|telegram\.org$|script\.google/.test(url.hostname)) return;
   // หน้าแอป: ใช้ของใหม่จากเน็ตก่อน ถ้าออฟไลน์ใช้ของที่เก็บไว้
-  if (req.mode === 'navigate' || url.pathname.endsWith('/index.html')) {
-    e.respondWith(fetch(req.url, { cache: 'no-store' }).then(r => { const c = r.clone(); caches.open(CACHE).then(x => x.put('./index.html', c)); return r; })
-      .catch(() => caches.match('./index.html')));
+  if (req.mode === 'navigate' || url.pathname.endsWith('.html')) {
+    const key = url.pathname.endsWith('/order.html') ? './order.html' : './index.html';
+    e.respondWith(fetch(req.url, { cache: 'no-store' }).then(r => { if (r.ok) { const c = r.clone(); caches.open(CACHE).then(x => x.put(key, c)); } return r; })
+      .catch(() => caches.match(key)));
     return;
   }
   // ไฟล์อื่น (สคริปต์ ฟอนต์ ไอคอน รูปสินค้า): ใช้ของในเครื่องก่อน แล้วอัปเดตเบื้องหลัง

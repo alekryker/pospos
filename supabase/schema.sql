@@ -340,3 +340,81 @@ end $$;
 revoke execute on function pos.claim_slip(text, boolean) from public, anon;
 grant execute on function pos.claim_slip(text, boolean) to authenticated;
 notify pgrst, 'reload schema';
+-- ===== สั่งอาหารจาก QR ที่โต๊ะ (ลูกค้าไม่ต้องล็อกอิน) =====
+alter table pos.products add column if not exists name_en text default '';
+alter table pos.products add column if not exists featured boolean default false;
+
+create table if not exists pos.orders (
+  id bigint generated always as identity primary key,
+  table_no text not null, items jsonb not null, total numeric not null default 0,
+  note text default '', lang text default 'th', status text not null default 'new',
+  created_at timestamptz not null default now(), handled_by text, handled_at timestamptz
+);
+create index if not exists pos_orders_status on pos.orders (status, created_at);
+alter table pos.orders enable row level security;
+drop policy if exists pos_orders_member on pos.orders;
+create policy pos_orders_member on pos.orders for all to authenticated using (pos.is_member()) with check (pos.is_member());
+grant select, update on pos.orders to authenticated;
+do $$ begin
+  begin alter publication supabase_realtime add table pos.orders; exception when duplicate_object then null; end;
+end $$;
+
+-- เมนูสาธารณะ: ไม่มีต้นทุน/สต๊อกจริง
+create or replace function pos.public_menu() returns jsonb
+language sql stable security definer set search_path = pos as $$
+  with best as (
+    select it->>'id' as id, sum((it->>'qty')::numeric) as q
+    from pos.sales s, jsonb_array_elements(s.items) it
+    where s.status = 'ok' and s.ts > now() - interval '30 days'
+    group by 1 order by 2 desc limit 8
+  )
+  select jsonb_build_object(
+    'shop', coalesce((select data->>'shop' from pos.settings where id = 1), ''),
+    'products', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', p.id, 'name', p.name, 'name_en', coalesce(p.name_en, ''), 'category', coalesce(p.category, ''),
+        'price', p.price, 'image', coalesce(p.image, ''), 'featured', coalesce(p.featured, false),
+        'best', exists (select 1 from best b where b.id = p.id), 'soldout', p.stock <= 0
+      ) order by p.sort, p.name) from pos.products p where p.active), '[]'::jsonb));
+$$;
+
+create or replace function pos.place_order(p_table text, p_items jsonb, p_note text default '', p_lang text default 'th') returns jsonb
+language plpgsql security definer set search_path = pos, extensions as $$
+declare it jsonb; p pos.products; q int; lines jsonb := '[]'::jsonb; tot numeric := 0; oid bigint; s pos.secrets; msg text := ''; tb text;
+begin
+  tb := left(regexp_replace(coalesce(p_table, ''), '[^0-9A-Za-zก-๙ _-]', '', 'g'), 20);
+  if tb = '' then raise exception 'ไม่พบหมายเลขโต๊ะ'; end if;
+  if jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 or jsonb_array_length(p_items) > 40 then raise exception 'รายการไม่ถูกต้อง'; end if;
+  if (select count(*) from pos.orders where table_no = tb and created_at > now() - interval '2 minutes') >= 5 then
+    raise exception 'สั่งถี่เกินไป กรุณารอสักครู่';
+  end if;
+  for it in select * from jsonb_array_elements(p_items) loop
+    q := least(greatest(coalesce((it->>'qty')::int, 0), 0), 50);
+    if q = 0 then continue; end if;
+    select * into p from pos.products where id = it->>'id' and active;
+    if not found then continue; end if;
+    lines := lines || jsonb_build_object('id', p.id, 'name', p.name, 'qty', q, 'price', p.price, 'total', p.price * q);
+    tot := tot + p.price * q;
+    msg := msg || chr(10) || '• ' || p.name || ' x' || q;
+  end loop;
+  if jsonb_array_length(lines) = 0 then raise exception 'ไม่มีสินค้าที่สั่งได้'; end if;
+  insert into pos.orders (table_no, items, total, note, lang) values (tb, lines, tot, left(coalesce(p_note, ''), 200), left(coalesce(p_lang, 'th'), 5))
+  returning id into oid;
+  select * into s from pos.secrets where id = 1;
+  if coalesce(s.tg_token, '') <> '' and coalesce(s.tg_on, false) and coalesce(s.tg_chat, '') <> '' then
+    perform net.http_post(url := 'https://api.telegram.org/bot' || s.tg_token || '/sendMessage',
+      body := jsonb_build_object('chat_id', s.tg_chat, 'text',
+        '🛎 ออเดอร์ใหม่ โต๊ะ ' || tb || ' (#' || oid || ')' || msg || chr(10) || 'รวม ' || tot || ' บาท' ||
+        case when coalesce(p_note, '') <> '' then chr(10) || '📝 ' || left(p_note, 200) else '' end));
+    if coalesce(s.tg_staff_on, false) and coalesce(s.tg_staff_chat, '') <> '' then
+      perform net.http_post(url := 'https://api.telegram.org/bot' || s.tg_token || '/sendMessage',
+        body := jsonb_build_object('chat_id', s.tg_staff_chat, 'text', '🛎 ออเดอร์ใหม่ โต๊ะ ' || tb || ' (#' || oid || ')' || msg));
+    end if;
+  end if;
+  return jsonb_build_object('ok', true, 'id', oid, 'total', tot);
+end $$;
+
+revoke execute on function pos.public_menu() from public;
+revoke execute on function pos.place_order(text, jsonb, text, text) from public;
+grant execute on function pos.public_menu() to anon, authenticated;
+grant execute on function pos.place_order(text, jsonb, text, text) to anon, authenticated;
+notify pgrst, 'reload schema';

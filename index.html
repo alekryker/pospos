@@ -99,6 +99,15 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .sideBtn,.side{display:none}body.hasSide .sideBtn{display:grid}body.hasSide .side{display:flex}
 @media(min-width:1100px){body.hasSide{padding-left:250px}body.hasSide .side{transform:none;box-shadow:none;z-index:35}body.hasSide .sideBtn,body.hasSide .sideX,body.hasSide .sideScrim{display:none}
   body.hasSide .nav{left:calc(50% + 125px)}body.hasSide .top .logo .brandImg{display:none}}
+.orderPill{background:var(--danger)!important;color:#fff!important;border-color:transparent!important;gap:6px;animation:opulse 1.6s infinite}.orderPill.hidden{display:none}
+.orderPill b{background:#fff;color:var(--danger);border-radius:999px;min-width:20px;height:20px;display:grid;place-items:center;font-size:12px;padding:0 5px}
+@keyframes opulse{0%,100%{box-shadow:0 0 0 0 rgba(224,56,79,.45)}50%{box-shadow:0 0 0 8px rgba(224,56,79,0)}}
+.ord{border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px;background:var(--raise)}
+.ord h5{display:flex;align-items:center;gap:8px;font-size:15px;margin:0 0 6px}.ord h5 .tag{font-size:12px}
+.ord ul{list-style:none;margin:0 0 6px;padding:0}.ord li{display:flex;justify-content:space-between;font-size:14px;padding:2px 0}
+.ord .btns{margin-top:8px}
+.qrGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+.qrCard{border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;background:#fff;color:#111}.qrCard img{width:100%;image-rendering:pixelated}.qrCard b{display:block;font-size:15px}
 .srow{display:flex;gap:8px;align-items:stretch}.srow .search{flex:1;min-width:0}
 .drawerQuick{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:0 14px;border-radius:16px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-weight:600;font-size:14px;cursor:pointer;box-shadow:var(--shadow-sm,none)}
 .drawerQuick svg{width:20px;height:20px}.drawerQuick:active{transform:scale(.97)}.drawerQuick.hidden{display:none}
@@ -374,6 +383,7 @@ html{zoom:.9}
   <button class="sideItem" data-sec-go="printer" data-side="sec:printer"><span><i class="fi fi-rr-print"></i></span>เครื่องพิมพ์</button>
   <button class="sideItem" data-sec-go="shop" data-side="sec:shop"><span><i class="fi fi-rr-shop"></i></span>ร้าน & ใบเสร็จ</button>
   <button class="sideItem" data-sec-go="tg" data-side="sec:tg"><span><i class="fi fi-rr-bell"></i></span>Telegram</button>
+  <button class="sideItem" data-act="tableQR" data-side="act:tableQR"><span><i class="fi fi-rr-qrcode"></i></span>QR สั่งที่โต๊ะ</button>
   <button class="sideItem" data-act="dataTools" data-side="act:dataTools"><span><i class="fi fi-rr-database"></i></span>ข้อมูล</button>
   <button class="sideItem" data-sec-go="general" data-side="sec:general"><span><i class="fi fi-rr-settings"></i></span>ทั่วไป</button>
 </aside>
@@ -383,6 +393,7 @@ html{zoom:.9}
   <div class="logo"><img class="brandImg" src="icons/logo-wide.png" alt="SLAY"><span><span id="shopTitle">POS</span><small id="staffLine">-</small></span></div>
   <div class="sp"></div>
   <button class="pill hidden" id="syncPill" data-act="sync"><span class="dot"></span><span>ซิงก์</span></button>
+  <button class="pill orderPill hidden" id="orderPill" data-act="orders"><i class="fi fi-rr-bell"></i><span>ออเดอร์</span><b id="orderN">0</b></button>
   <button class="pill" id="shiftPill" data-act="shift"><span class="dot"></span><span>กะ</span></button>
   <button class="pill adminOnly" id="printerPill" data-act="goPrinter"><span class="dot"></span><span>เครื่องพิมพ์</span></button>
   <button class="iconBtn" data-act="theme" title="สลับธีม" id="themeBtn"></button>
@@ -474,6 +485,7 @@ html{zoom:.9}
           <button class="tile" data-sec-go="printer"><span><i class="fi fi-rr-print"></i></span><b>เครื่องพิมพ์</b><small>USB บลูทูธ ลิ้นชัก</small></button>
           <button class="tile" data-sec-go="shop"><span><i class="fi fi-rr-shop"></i></span><b>ร้าน &amp; ใบเสร็จ</b><small>ชื่อ พร้อมเพย์ รายชื่อ</small></button>
           <button class="tile" data-sec-go="tg"><span><i class="fi fi-rr-bell"></i></span><b>Telegram</b><small>แจ้งเตือน 2 กลุ่ม</small></button>
+          <button class="tile" data-act="tableQR"><span><i class="fi fi-rr-qrcode"></i></span><b>QR โต๊ะ</b><small>ให้ลูกค้าสั่งเอง</small></button>
           <button class="tile" data-act="dataTools"><span><i class="fi fi-rr-database"></i></span><b>ข้อมูล</b><small>นำเข้า สำรอง CSV</small></button>
           <button class="tile" data-sec-go="general"><span><i class="fi fi-rr-settings"></i></span><b>ทั่วไป</b><small>กะ ธีม การเชื่อมต่อ</small></button>
         </div>
@@ -601,6 +613,8 @@ const LocalAPI={
   async uploadImage(blob){return new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(blob)})},
   async upsertStaff(s){const l=local.get('staff',[]),i=l.findIndex(x=>x.id===s.id);if(i>-1)l[i]=s;else l.push(s);local.set('staff',l)},
   async deleteStaff(id){local.set('staff',local.get('staff',[]).filter(x=>x.id!==id))},
+  async pendingOrders(){return local.get('orders',[]).filter(o=>o.status==='new')},
+  async setOrder(id,status,by){const l=local.get('orders',[]),o=l.find(x=>x.id===id);if(!o||o.status!=='new')return false;Object.assign(o,{status,handled_by:by,handled_at:iso(Date.now())});local.set('orders',l);return true},
   async saveShop(d){local.set('shop',d)},
   async createSale(s){if(await idbGet('dsales',s.billNo))return;await idbPut('dsales',{...s,status:'ok'});
     const ps=local.get('products',[]);s.items.forEach(i=>{const p=ps.find(x=>x.id===i.id);if(p)p.stock=Number(p.stock)-i.qty});local.set('products',ps)},
@@ -626,8 +640,8 @@ const LocalAPI={
 let sb=null;
 const chk=({data,error})=>{if(error)throw new Error(error.message);return data};
 const iso=t=>new Date(t).toISOString();
-const p2db=p=>({id:p.id,name:p.name,category:p.category||'',price:+p.price||0,cost:+p.cost||0,stock:+p.stock||0,low:+p.low||0,image:p.image||'',active:p.active!==false,sort:+p.order||0,updated_at:iso(Date.now())});
-const db2p=r=>({id:r.id,name:r.name,category:r.category||'',price:+r.price||0,cost:+r.cost||0,stock:+r.stock||0,low:+r.low||0,image:r.image||'',active:r.active!==false,order:r.sort||0});
+const p2db=p=>({id:p.id,name:p.name,category:p.category||'',price:+p.price||0,cost:+p.cost||0,stock:+p.stock||0,low:+p.low||0,image:p.image||'',name_en:p.nameEn||'',featured:!!p.featured,active:p.active!==false,sort:+p.order||0,updated_at:iso(Date.now())});
+const db2p=r=>({id:r.id,name:r.name,category:r.category||'',price:+r.price||0,cost:+r.cost||0,stock:+r.stock||0,low:+r.low||0,image:r.image||'',nameEn:r.name_en||'',featured:!!r.featured,active:r.active!==false,order:r.sort||0});
 const s2db=s=>({id:s.id,name:s.name,role:s.role,pin_hash:s.pinHash,active:s.active!==false,updated_at:iso(Date.now())});
 const db2s=r=>({id:r.id,name:r.name,role:r.role,pinHash:r.pin_hash,active:r.active!==false,username:r.username||'',userId:r.user_id||null});
 const db2sale=r=>({billNo:r.bill_no,ts:Date.parse(r.ts),day:r.day,staff:r.staff,staffId:r.staff_id,shiftId:r.shift_id,device:r.device,items:r.items||[],
@@ -651,6 +665,8 @@ const CloudAPI={
   async createStaffLogin(u,name,role,pin){return chk(await sb.rpc('create_staff_login',{p_username:u,p_name:name,p_role:role,p_pin:pin}))},
   async setStaffPin(id,pin){return chk(await sb.rpc('set_staff_pin',{p_staff:id,p_pin:pin}))},
   async deleteStaff(id){return chk(await sb.rpc('delete_staff',{p_staff:id}))},
+  async pendingOrders(){return chk(await sb.from('orders').select('*').eq('status','new').order('created_at').limit(50))},
+  async setOrder(id,status,by){const d=chk(await sb.from('orders').update({status,handled_by:by,handled_at:iso(Date.now())}).eq('id',id).eq('status','new').select('id'));return !!(d&&d.length)},
   async setStaffActive(id,on){return chk(await sb.rpc('set_staff_active',{p_staff:id,p_active:on}))},
   async saveShop(d){chk(await sb.from('settings').upsert({id:1,data:d,updated_at:iso(Date.now())}))},
   async createSale(s){return chk(await sb.rpc('create_sale',{s}))},
@@ -804,7 +820,7 @@ function loginAs(s){
   $('staffLine').textContent=s.name+(s.role==='ADMIN'?' · แอดมิน':' · แคชเชียร์');
   $('uName').textContent=s.name;$('uRole').textContent=(s.role==='ADMIN'?'ผู้ดูแลระบบ':'แคชเชียร์')+' · เครื่อง '+DEV.code;$('uAvatar').textContent=s.name.charAt(0).toUpperCase();
   document.querySelectorAll('.adminOnly').forEach(x=>x.classList.toggle('hidden',!isAdmin()));
-  document.body.classList.toggle('hasSide',isAdmin());if(!isAdmin())sideClose();
+  setTimeout(refreshOrders,800);document.body.classList.toggle('hasSide',isAdmin());if(!isAdmin())sideClose();
   if(!isAdmin()&&VIEW==='report')setView('sell');renderAll();showSec('');markSide();if(isAdmin()){loadTgUI();setTimeout(keepImages,2500);setTimeout(slipPump,1500)}updateSlipUI&&updateSlipUI();
 }
 /* ย้ายรูปสินค้าที่เป็นลิงก์ภายนอก (เช่น go.pospos.co / Drive) มาเก็บใน Supabase Storage ถาวร — ทำเองเบื้องหลังเมื่อแอดมินเข้าใช้ */
@@ -836,7 +852,39 @@ async function refreshCloud(){
     setOnline(true);CART=CART.filter(c=>prodById(c.id));renderAll();if(VIEW==='bills')renderBills();if(VIEW==='report')renderReport();
   }catch(e){if(isNetErr(e))setOnline(false);else console.warn(e)}
 }
-function queueRefresh(table){if(table==='sales')setTimeout(slipPump,600);clearTimeout(REFRESH_T);REFRESH_T=setTimeout(()=>{if(table==='sales'){if(VIEW==='bills')renderBills();if(VIEW==='report')renderReport()}else refreshCloud()},350)}
+/* ===== ออเดอร์จาก QR ที่โต๊ะ ===== */
+let ORDERS=[],ORDERS_SEEN=new Set(),ORDERS_MODAL=null;
+function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)();[0,.22].forEach(d=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=880;o.connect(g);g.connect(a.destination);g.gain.setValueAtTime(.0001,a.currentTime+d);g.gain.exponentialRampToValueAtTime(.3,a.currentTime+d+.02);g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d+.18);o.start(a.currentTime+d);o.stop(a.currentTime+d+.2)})}catch(e){}}
+async function refreshOrders(){if(!USER)return;try{ORDERS=await API.pendingOrders()}catch(e){return}
+  const fresh=ORDERS.filter(o=>!ORDERS_SEEN.has(o.id));const first=!refreshOrders.done;refreshOrders.done=true;ORDERS.forEach(o=>ORDERS_SEEN.add(o.id));
+  if(fresh.length&&!first){beep();toast(`ออเดอร์ใหม่ โต๊ะ ${fresh.map(o=>o.table_no).join(', ')}`,'ok')}
+  const p=$('orderPill');p.classList.toggle('hidden',!ORDERS.length);$('orderN').textContent=ORDERS.length;if(ORDERS_MODAL)ORDERS_MODAL.redraw()}
+function ordersPanel(){ORDERS_MODAL=modal({title:'ออเดอร์จากโต๊ะ',body:'<div id="ordList"></div>',actions:[{label:'ปิด',onClick:a=>a.close()}],
+  onOpen:a=>{a.redraw=()=>{const el=a.el.querySelector('#ordList');if(!el)return;el.innerHTML=ORDERS.length?ORDERS.map(o=>`<div class="ord"><h5><span class="tag ok">โต๊ะ ${esc(o.table_no)}</span>#${o.id}<span class="sp"></span><small class="muted">${new Date(o.created_at).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</small></h5>
+      <ul>${(o.items||[]).map(i=>`<li><span>${esc(i.name)} × ${i.qty}</span><span>${money0(i.total)}</span></li>`).join('')}</ul>${o.note?`<div class="muted">หมายเหตุ: ${esc(o.note)}</div>`:''}
+      <div class="lr bold" style="display:flex;justify-content:space-between;margin-top:4px"><span>รวม</span><span>${money(o.total)}</span></div>
+      <div class="btns"><button class="btn green" data-oacc="${o.id}">รับเข้าบิล</button><button class="btn" data-orej="${o.id}">ปฏิเสธ</button></div></div>`).join(''):'<div class="muted" style="padding:16px 0;text-align:center">ไม่มีออเดอร์ใหม่</div>'};
+    a.redraw();a.el.addEventListener('click',async e=>{const ac=e.target.closest('[data-oacc]'),rj=e.target.closest('[data-orej]');
+      if(ac)acceptOrder(Number(ac.dataset.oacc),a);if(rj&&await ask('ปฏิเสธออเดอร์นี้?','','ปฏิเสธ',true)){try{await API.setOrder(Number(rj.dataset.orej),'rejected',USER.name)}catch(err){toast(errMsg(err),'err')}refreshOrders()}})}});
+  ORDERS_MODAL.onClose=()=>{ORDERS_MODAL=null}}
+async function acceptOrder(id,m){const o=ORDERS.find(x=>x.id===id);if(!o)return;
+  let ok=false;try{ok=await guard(()=>API.setOrder(id,'accepted',USER.name),'กำลังรับออเดอร์...')}catch(e){return}
+  if(!ok){toast('ออเดอร์นี้มีคนรับไปแล้ว','warn');refreshOrders();return}
+  const miss=[];(o.items||[]).forEach(i=>{const p=prodById(i.id);if(!p){miss.push(i.name);return}const c=CART.find(x=>x.id===i.id),room=Math.max(0,Number(p.stock||0)-(c?c.qty:0)),q=Math.min(Number(i.qty)||0,room);
+    if(q<i.qty)miss.push(i.name);if(!q)return;if(c)c.qty+=q;else CART.push({id:p.id,name:p.name,price:Number(p.price||0),qty:q})});
+  const tag='โต๊ะ '+o.table_no+(o.note?' · '+o.note:''),cur=$('note').value.trim();$('note').value=cur?(cur.includes(tag)?cur:cur+' · '+tag):tag;
+  if(m)m.close();setView('sell');renderGrid();renderCart();openCart();refreshOrders();
+  toast(miss.length?'เข้าบิลแล้ว แต่สต๊อกไม่พอ: '+miss.join(', '):'รับออเดอร์โต๊ะ '+o.table_no+' เข้าบิลแล้ว',miss.length?'warn':'ok')}
+function tableQR(){const base=location.origin+location.pathname.replace(/[^/]*$/,'')+'order.html?t=';let n=Number(shop().tables)||10;
+  const grid=()=>Array.from({length:n},(_,i)=>i+1).map(k=>`<div class="qrCard"><img src="${qrDataURL(base+k,5)}" alt=""><b>โต๊ะ ${k}</b><a href="${esc(base+k)}" target="_blank" rel="noopener" style="font-size:12px">เปิดลิงก์</a></div>`).join('');
+  modal({title:'QR สั่งอาหารที่โต๊ะ',body:`<div class="field"><label>จำนวนโต๊ะ</label><input id="qrN" type="number" min="1" max="60" value="${n}"></div><p class="muted" style="font-size:13px;margin:0 0 10px">พิมพ์แล้ววางที่โต๊ะ ลูกค้าสแกนเพื่อสั่ง ออเดอร์จะเด้งที่ POS</p><div class="qrGrid" id="qrG">${grid()}</div>`,
+    actions:[{label:I_('print')+' พิมพ์ QR ทั้งหมด',cls:'green',onClick:()=>printTableQR(base,n)},{label:'ปิด',onClick:a=>a.close()}],
+    onOpen:a=>{a.el.querySelector('#qrN').addEventListener('change',async e=>{n=Math.max(1,Math.min(60,Number(e.target.value)||1));e.target.value=n;a.el.querySelector('#qrG').innerHTML=grid();
+      if(isAdmin()){const d={...SHOP,tables:n};try{await API.saveShop(d);SHOP=d;cacheSave()}catch(err){}}})}})}
+const I_=n=>`<i class="fi fi-rr-${n}"></i>`;
+function printTableQR(base,n){const shopN=esc(shop().shop||'SLAY'),w=window.open('','_blank');if(!w){toast('เบราว์เซอร์บล็อกหน้าต่างพิมพ์','warn');return}
+  w.document.write(`<!doctype html><html lang="th"><head><meta charset="utf-8"><title>QR โต๊ะ</title><link href="https://fonts.googleapis.com/css2?family=Anuphan:wght@500;700&display=swap" rel="stylesheet"><style>body{font-family:Anuphan,sans-serif;margin:0;padding:10mm}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:8mm}.c{border:1.5px dashed #999;border-radius:6mm;padding:6mm;text-align:center;break-inside:avoid}.c img{width:100%;image-rendering:pixelated}.s{font-size:14pt;font-weight:700}.t{font-size:22pt;font-weight:700;margin-top:2mm}.h{font-size:10pt;color:#555}@page{margin:8mm}</style></head><body><div class="g">${Array.from({length:n},(_,i)=>i+1).map(k=>`<div class="c"><div class="s">${shopN}</div><img src="${qrDataURL(base+k,8)}"><div class="t">โต๊ะ ${k}</div><div class="h">สแกนเพื่อสั่งอาหาร · Scan to order</div></div>`).join('')}</div><script>document.fonts.ready.then(()=>setTimeout(()=>print(),300))<\/script></body></html>`);w.document.close()}
+function queueRefresh(table){if(table==='orders'){refreshOrders();return}if(table==='sales')setTimeout(slipPump,600);clearTimeout(REFRESH_T);REFRESH_T=setTimeout(()=>{if(table==='sales'){if(VIEW==='bills')renderBills();if(VIEW==='report')renderReport()}else refreshCloud()},350)}
 function setOnline(v){ONLINE=v;renderSync()}
 async function renderSync(){
   const n=(await idbAll('outbox')).length,q=local.get('tgq',[]).length,p=$('syncPill');
@@ -1138,9 +1186,11 @@ async function editProduct(id){
       <div class="field full"><label>รูปสินค้า</label><div class="imgPick">${p.image?`<img class="pv" id="fp-pv" src="${esc(p.image)}" referrerpolicy="no-referrer" alt="">`:'<span class="pv empty" id="fp-pv"><i class="fi fi-rr-picture"></i></span>'}
         <div class="grow" style="display:flex;flex-direction:column;gap:8px"><button class="btn" type="button" id="fp-pick"><i class="fi fi-rr-camera"></i> ถ่ายรูป / เลือกรูป</button>${p.image?'<button class="mini" type="button" id="fp-clear" style="align-self:flex-start">ลบรูป</button>':''}</div>
         <input type="file" id="fp-file" accept="image/*" hidden></div></div>
-      ${f('image','หรือวางลิงก์รูป (URL / Google Drive)',p.image,'text','full')}</div>${id?'<button class="btn red block" data-del type="button">ลบสินค้านี้</button>':''}`,
+      ${f('image','หรือวางลิงก์รูป (URL / Google Drive)',p.image,'text','full')}
+      ${f('nameEn','ชื่อภาษาอังกฤษ (หน้าสั่ง QR)',p.nameEn,'text','full')}
+      <div class="field full"><label class="switch" style="padding:0"><div><b>ติดป้าย "แนะนำ"</b><small>ขึ้นหมวดเมนูแนะนำในหน้าสั่ง QR</small></div><span class="tg"><input type="checkbox" id="fp-featured" ${p.featured?'checked':''}><span></span></span></label></div></div>${id?'<button class="btn red block" data-del type="button">ลบสินค้านี้</button>':''}`,
     'บันทึก',el=>{const g=k=>el.querySelector('#fp-'+k).value.trim();
-      const d={id:g('id')||('P'+uid()),name:g('name'),category:g('category'),price:Number(g('price')||0),cost:Number(g('cost')||0),stock:Number(g('stock')||0),low:Number(g('low')||0),active:g('active')==='1',image:driveImg(g('image')),order:p.order||PRODUCTS.length+1};
+      const d={id:g('id')||('P'+uid()),name:g('name'),category:g('category'),price:Number(g('price')||0),cost:Number(g('cost')||0),stock:Number(g('stock')||0),low:Number(g('low')||0),active:g('active')==='1',image:driveImg(g('image')),nameEn:g('nameEn'),featured:el.querySelector('#fp-featured').checked,order:p.order||PRODUCTS.length+1};
       if(!d.name)return 'กรุณากรอกชื่อสินค้า';if(PRODUCTS.some(x=>x.id===d.id&&x.id!==id))return 'รหัสสินค้านี้มีอยู่แล้ว';return d},
     (a,finish)=>{const q=k=>a.el.querySelector('#fp-'+k),setPv=u=>{const o=q('pv'),n=document.createElement(u?'img':'span');n.id='fp-pv';n.className='pv'+(u?'':' empty');if(u){n.src=u;n.referrerPolicy='no-referrer'}else n.innerHTML='<i class="fi fi-rr-picture"></i>';o.replaceWith(n)};
       q('pick').onclick=()=>q('file').click();if(q('clear'))q('clear').onclick=()=>{q('image').value='';setPv('')};
@@ -1501,6 +1551,7 @@ async function keepAwake(){try{if(DEV.slipOn&&navigator.wakeLock&&!SLIP_LOCK&&do
 function updateSlipUI(){const st=$('slipStatus');if(!st)return;document.querySelectorAll('#slipPaperSeg button').forEach(b=>b.classList.toggle('on',Number(b.dataset.slippaper)===(Number(DEV.slipPaper)===80?80:58)));$('slipOn').checked=!!DEV.slipOn;
   st.innerHTML=(SLIP.connected?`<span class="tag ok">เชื่อมแล้ว</span> ${esc(SLIP.name)}`:`<span class="tag warn">ยังไม่เชื่อม</span>${DEV.slipName?' '+esc(DEV.slipName):''}`)+(DEV.slipOn?' · <span class="tag ok">รับพิมพ์อยู่</span>':' · <span class="tag">ปิดรับพิมพ์</span>');
   $('slipBtn').textContent=SLIP.connected?'เชื่อมเครื่องอื่น':'เชื่อมบลูทูธ';keepAwake()}
+setInterval(()=>refreshOrders(),20000);
 function initSlip(){if(DEV.slipV!==2){DEV.slipV=2;DEV.slipOn=false;saveDev()}updateSlipUI();setInterval(slipPump,15000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){keepAwake();slipPump()}});
   if(DEV.slipName&&hasBT()&&navigator.bluetooth.getDevices)navigator.bluetooth.getDevices().then(ds=>{const d=(ds||[]).find(x=>x.name===DEV.slipName);if(d)slipOpen(d).then(slipPump).catch(()=>{SLIP.device=d})}).catch(()=>{})}
 async function autoDrawer(){if(isAdmin()&&PRINTER.connected&&['BT','WEBUSB','QZ'].includes(PRINTER.mode))try{await pulseDrawer()}catch(e){toast('ขายสำเร็จ แต่เปิดลิ้นชักไม่ได้','warn')}}
@@ -1556,7 +1607,7 @@ function bindUI(){
       sync:async()=>{await syncNow();await refreshCloud();toast(ONLINE?'ซิงก์แล้ว':'ยังออฟไลน์',ONLINE?'ok':'warn')},
       signOut:async()=>{if(!(await ask('ออกจากระบบ?',DEMO?'กลับไปหน้าเลือกพนักงาน':'ต้องเข้าสู่ระบบใหม่ (ยูส + PIN หรืออีเมลร้าน) เพื่อใช้งาน','ออกจากระบบ',true)))return;
         if(DEMO){USER=null;sessionStorage.removeItem(KP+'p3:user');closeCart();showLock();return}signOutDevice()},
-      saveShop:saveShopUI,sideOpen,sideClose,slipConnect:slipConnectUI,slipTest:()=>slipPrint(testSlip()).then(()=>toast('พิมพ์ทดสอบแล้ว','ok')).catch(e=>toast(errMsg(e),'err')),tgSave,tgTest:()=>tgTest(a.dataset.ch||'admin'),tgFind,connectPrinter,testPrint:()=>printReceipt(testReceipt()),drawer:openDrawerManual,adminProducts,adminStaff,dataTools})[a.dataset.act]?.();
+      saveShop:saveShopUI,orders:ordersPanel,tableQR,sideOpen,sideClose,slipConnect:slipConnectUI,slipTest:()=>slipPrint(testSlip()).then(()=>toast('พิมพ์ทดสอบแล้ว','ok')).catch(e=>toast(errMsg(e),'err')),tgSave,tgTest:()=>tgTest(a.dataset.ch||'admin'),tgFind,connectPrinter,testPrint:()=>printReceipt(testReceipt()),drawer:openDrawerManual,adminProducts,adminStaff,dataTools})[a.dataset.act]?.();
   });
   $('q').addEventListener('input',renderGrid);$('discVal').addEventListener('input',renderCart);
   $('pAuto').addEventListener('change',e=>{DEV.autoPrint=e.target.checked;saveDev()});
