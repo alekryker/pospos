@@ -106,6 +106,8 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .ord h5{display:flex;align-items:center;gap:8px;font-size:15px;margin:0 0 6px}.ord h5 .tag{font-size:12px}
 .ord ul{list-style:none;margin:0 0 6px;padding:0}.ord li{display:flex;justify-content:space-between;font-size:14px;padding:2px 0}
 .ord .btns{margin-top:8px}
+.apBulk{display:flex;align-items:center;gap:8px;padding:8px 10px;margin-bottom:8px;border-radius:12px;background:var(--brandSoft);font-weight:600;font-size:14px}.apBulk span{flex:1}.apBulk.hidden{display:none}
+.apck{width:20px;height:20px;accent-color:var(--brand);flex:0 0 auto}.chip .n{opacity:.6;font-size:12px}
 .qrGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
 .qrCard{border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center;background:#fff;color:#111}.qrCard img{width:100%;image-rendering:pixelated}.qrCard b{display:block;font-size:15px}
 .srow{display:flex;gap:8px;align-items:stretch}.srow .search{flex:1;min-width:0}
@@ -609,6 +611,7 @@ const LocalAPI={
   async upsertProducts(l){const m=new Map(local.get('products',[]).map(p=>[p.id,p]));l.forEach(p=>m.set(p.id,p));local.set('products',[...m.values()])},
   async replaceProducts(l){local.set('products',l)},
   async deleteProduct(id){local.set('products',local.get('products',[]).filter(p=>p.id!==id))},
+  async setCategory(ids,cat){local.set('products',local.get('products',[]).map(p=>ids.includes(p.id)?{...p,category:cat}:p))},
   async setSort(l){const m=new Map(l.map(p=>[p.id,p.order]));local.set('products',local.get('products',[]).map(p=>m.has(p.id)?{...p,order:m.get(p.id)}:p))},
   async uploadImage(blob){return new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(blob)})},
   async upsertStaff(s){const l=local.get('staff',[]),i=l.findIndex(x=>x.id===s.id);if(i>-1)l[i]=s;else l.push(s);local.set('staff',l)},
@@ -657,6 +660,7 @@ const CloudAPI={
   async upsertProducts(l){for(let i=0;i<l.length;i+=500)chk(await sb.from('products').upsert(l.slice(i,i+500).map(p2db)))},
   async replaceProducts(l){chk(await sb.from('products').delete().neq('id','\u0000'));await CloudAPI.upsertProducts(l)},
   async deleteProduct(id){chk(await sb.from('products').delete().eq('id',id))},
+  async setCategory(ids,cat){for(let i=0;i<ids.length;i+=100)chk(await sb.from('products').update({category:cat,updated_at:iso(Date.now())}).in('id',ids.slice(i,i+100)))},
   async setSort(l){const t=iso(Date.now());await Promise.all(l.map(async p=>chk(await sb.from('products').update({sort:p.order,updated_at:t}).eq('id',p.id))))},
   async uploadImage(blob){const path=`p/${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}.jpg`;
     const {error}=await sb.storage.from('pos-products').upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000'});if(error)throw error;
@@ -1152,23 +1156,49 @@ async function renderReport(){
 
 /* ======================= ADMIN: PRODUCTS ======================= */
 let PROD_MODAL=null;
-function adminProducts(){
-  PROD_MODAL=modal({title:'สินค้า',body:`<div class="search" style="margin-bottom:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="apQ" type="search" placeholder="ค้นหาสินค้า"></div><div id="apList"></div>`,
-    actions:[{label:'＋ เพิ่มสินค้า',cls:'green',onClick:()=>editProduct(null)}],
-    onOpen:a=>{a.redraw=()=>{const q=a.el.querySelector('#apQ').value.trim().toLowerCase();
-        const l=PRODUCTS.filter(p=>!q||String(p.name).toLowerCase().includes(q)||String(p.id).toLowerCase().includes(q)).sort((x,y)=>(x.order||0)-(y.order||0));
-        a.el.querySelector('#apList').innerHTML=l.length?l.map(p=>`<div class="row">${p.image?`<img class="th" src="${esc(p.image)}" referrerpolicy="no-referrer" alt="">`:'<span class="th"></span>'}
-          <div class="grow"><b>${esc(p.name)} ${p.active===false?'<span class="tag bad">ปิดขาย</span>':''}</b><small>${esc(p.id)} · ${esc(p.category||'-')} · ${money0(p.price)} · เหลือ ${p.stock}</small></div>
-          <button class="mini" data-mv="${esc(p.id)}" data-d="top" title="ขึ้นบนสุด">⤒</button><button class="mini" data-mv="${esc(p.id)}" data-d="-1">↑</button><button class="mini" data-mv="${esc(p.id)}" data-d="1">↓</button><button class="mini green" data-ep="${esc(p.id)}">แก้</button></div>`).join(''):'<div class="muted" style="padding:10px 0">ไม่พบสินค้า</div>'};
+let AP_CAT='*',AP_SEL=new Set();
+async function applyCat(ids,cat){if(!ids.length)return;await guard(()=>API.setCategory(ids,cat),'กำลังบันทึก...');PRODUCTS.forEach(p=>{if(ids.includes(p.id))p.category=cat});cacheSave();renderChips();renderGrid();PROD_MODAL&&PROD_MODAL.redraw()}
+async function moveToCat(ids){if(!ids.length)return;const list=[...new Set(PRODUCTS.map(catKey))].filter(Boolean).sort((x,y)=>x.localeCompare(y,'th'));
+  const v=await form(`ย้าย ${ids.length} รายการไปหมวด`,`<div class="field"><label>หมวดหมู่ (เลือกหรือพิมพ์ชื่อใหม่)</label><input id="fCat" list="fCatL" placeholder="เช่น เบียร์"><datalist id="fCatL">${list.map(c=>`<option value="${esc(c)}">`).join('')}</datalist><small>เว้นว่าง = ไม่มีหมวด</small></div>`,'ย้าย',el=>({c:el.querySelector('#fCat').value.trim()}));
+  if(!v)return;try{await applyCat(ids,v.c);AP_SEL.clear();PROD_MODAL&&PROD_MODAL.redraw();toast(`ย้ายไปหมวด "${v.c||'ไม่มีหมวด'}" แล้ว`,'ok')}catch(e){}}
+function manageCats(){const draw=el=>{const counts=new Map();PRODUCTS.forEach(p=>counts.set(catKey(p),(counts.get(catKey(p))||0)+1));
+    el.innerHTML=[...counts.entries()].filter(([k])=>k).sort((x,y)=>x[0].localeCompare(y[0],'th')).map(([k,n])=>`<div class="row"><input class="catName" data-old="${esc(k)}" value="${esc(k)}" style="flex:1;min-width:0;height:40px;border-radius:12px;border:1px solid var(--line2);background:var(--bg);padding:0 12px;font:inherit;color:var(--ink)"><small class="muted" style="white-space:nowrap">${n} รายการ</small><button class="mini green" data-catsave="${esc(k)}">บันทึก</button><button class="mini" style="color:var(--danger)" data-catdel="${esc(k)}">ลบหมวด</button></div>`).join('')||'<div class="muted">ยังไม่มีหมวด</div>'};
+  modal({title:'จัดการหมวดหมู่',body:'<p class="muted" style="font-size:13px;margin:0 0 8px">เปลี่ยนชื่อหมวด = สินค้าทุกตัวในหมวดเปลี่ยนตาม · ตั้งชื่อซ้ำกับหมวดอื่น = รวมหมวด · ลบหมวด = สินค้ากลายเป็นไม่มีหมวด (ไม่ลบสินค้า)</p><div id="catList"></div>',actions:[{label:'ปิด',onClick:a=>a.close()}],
+    onOpen:a=>{const el=a.el.querySelector('#catList');draw(el);a.el.addEventListener('click',async e=>{const sv=e.target.closest('[data-catsave]'),dl=e.target.closest('[data-catdel]');
+      if(sv){const old=sv.dataset.catsave,nv=a.el.querySelector(`.catName[data-old="${CSS.escape(old)}"]`).value.trim();if(!nv||nv===old)return;
+        const ids=PRODUCTS.filter(p=>catKey(p)===old).map(p=>p.id);try{await applyCat(ids,nv);if(AP_CAT===old)AP_CAT=nv;toast(`เปลี่ยนเป็น "${nv}" แล้ว (${ids.length} รายการ)`,'ok');draw(el)}catch(err){}}
+      if(dl){const old=dl.dataset.catdel,ids=PRODUCTS.filter(p=>catKey(p)===old).map(p=>p.id);if(!await ask(`ลบหมวด "${old}"?`,`สินค้า ${ids.length} รายการจะกลายเป็นไม่มีหมวด (สินค้าไม่ถูกลบ)`,'ลบหมวด',true))return;
+        try{await applyCat(ids,'');if(AP_CAT===old)AP_CAT='*';toast('ลบหมวดแล้ว','ok');draw(el)}catch(err){}}})}})}
+const catKey=p=>p.category||'';
+function adminProducts(){AP_SEL=new Set();
+  PROD_MODAL=modal({title:'สินค้า',body:`<div class="search" style="margin-bottom:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="apQ" type="search" placeholder="ค้นหาสินค้า"></div>
+    <div class="chips" id="apCats" style="padding:6px 0 8px"></div><div class="apBulk hidden" id="apBulk"><span id="apSelN"></span><button class="mini green" data-apmove>ย้ายไปหมวด…</button><button class="mini" data-apclr>ยกเลิก</button></div><div id="apList"></div>`,
+    actions:[{label:'<i class="fi fi-rr-edit"></i> จัดการหมวด',onClick:()=>manageCats()},{label:'＋ เพิ่มสินค้า',cls:'green',onClick:()=>editProduct(null,AP_CAT==='*'?'':AP_CAT)}],
+    onOpen:a=>{const vis=()=>{const q=a.el.querySelector('#apQ').value.trim().toLowerCase();
+        return PRODUCTS.filter(p=>(AP_CAT==='*'||catKey(p)===AP_CAT)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.id).toLowerCase().includes(q))).sort((x,y)=>(x.order||0)-(y.order||0))};
+      a.redraw=()=>{const counts=new Map();PRODUCTS.forEach(p=>counts.set(catKey(p),(counts.get(catKey(p))||0)+1));
+        const keys=[...counts.keys()].sort((x,y)=>x===''?1:y===''?-1:x.localeCompare(y,'th'));if(AP_CAT!=='*'&&!counts.has(AP_CAT))AP_CAT='*';
+        a.el.querySelector('#apCats').innerHTML=`<button class="chip ${AP_CAT==='*'?'on':''}" data-apcat="*">ทั้งหมด <span class="n">${PRODUCTS.length}</span></button>`+
+          keys.map(k=>`<button class="chip ${AP_CAT===k?'on':''}" data-apcat="${esc(k)}">${esc(k||'ไม่มีหมวด')} <span class="n">${counts.get(k)}</span></button>`).join('');
+        const l=vis();
+        a.el.querySelector('#apList').innerHTML=l.length?l.map(p=>`<div class="row"><input type="checkbox" class="apck" data-apsel="${esc(p.id)}" ${AP_SEL.has(p.id)?'checked':''}>${p.image?`<img class="th" src="${esc(p.image)}" referrerpolicy="no-referrer" alt="">`:'<span class="th"></span>'}
+          <div class="grow"><b>${esc(p.name)} ${p.active===false?'<span class="tag bad">ปิดขาย</span>':''}</b><small>${esc(p.category||'ไม่มีหมวด')} · ${money0(p.price)} · เหลือ ${p.stock}</small></div>
+          <button class="mini" data-mv="${esc(p.id)}" data-d="top" title="ขึ้นบนสุด">⤒</button><button class="mini" data-mv="${esc(p.id)}" data-d="-1">↑</button><button class="mini" data-mv="${esc(p.id)}" data-d="1">↓</button><button class="mini green" data-ep="${esc(p.id)}">แก้</button></div>`).join(''):'<div class="muted" style="padding:10px 0">ไม่พบสินค้า</div>';
+        a.el.querySelector('#apBulk').classList.toggle('hidden',!AP_SEL.size);a.el.querySelector('#apSelN').textContent=`เลือก ${AP_SEL.size} รายการ`};
       a.redraw();a.el.querySelector('#apQ').addEventListener('input',a.redraw);
-      a.el.addEventListener('click',async e=>{const ep=e.target.closest('[data-ep]'),mv=e.target.closest('[data-mv]');if(ep)editProduct(ep.dataset.ep);
-        if(mv){const l=PRODUCTS.slice().sort((x,y)=>(x.order||0)-(y.order||0)),i=l.findIndex(p=>p.id===mv.dataset.mv);if(i<0)return;let ch=[];
-          if(mv.dataset.d==='top'){if(i===0)return;l[i].order=(l[0].order||0)-1;ch=[l[i]]}
+      a.el.addEventListener('change',e=>{const c=e.target.closest('[data-apsel]');if(!c)return;if(c.checked)AP_SEL.add(c.dataset.apsel);else AP_SEL.delete(c.dataset.apsel);a.redraw()});
+      a.el.addEventListener('click',async e=>{const ep=e.target.closest('[data-ep]'),mv=e.target.closest('[data-mv]'),ct=e.target.closest('[data-apcat]');
+        if(ct){AP_CAT=ct.dataset.apcat;a.redraw();return}
+        if(e.target.closest('[data-apclr]')){AP_SEL.clear();a.redraw();return}
+        if(e.target.closest('[data-apmove]')){moveToCat([...AP_SEL]);return}
+        if(ep)editProduct(ep.dataset.ep);
+        if(mv){const l=vis(),i=l.findIndex(p=>p.id===mv.dataset.mv);if(i<0)return;let ch=[];
+          if(mv.dataset.d==='top'){if(i===0)return;l[i].order=Math.min(...l.map(p=>p.order||0))-1;ch=[l[i]]}
           else{const j=i+Number(mv.dataset.d);if(j<0||j>=l.length)return;
             if((l[i].order||0)!==(l[j].order||0)){const t=l[i].order;l[i].order=l[j].order;l[j].order=t;ch=[l[i],l[j]]}
-            else{[l[i],l[j]]=[l[j],l[i]];l.forEach((p,k)=>{if(p.order!==k+1){p.order=k+1;ch.push(p)}})}}
+            else{const all=PRODUCTS.slice().sort((x,y)=>(x.order||0)-(y.order||0));all.forEach((p,k)=>{if(p.order!==k+1){p.order=k+1;ch.push(p)}});const t=l[i].order;l[i].order=l[j].order;l[j].order=t;ch.push(l[i],l[j])}}
           a.redraw();renderGrid();if(mv.dataset.d==='top')toast('ย้ายขึ้นบนสุดแล้ว','ok');
-          try{await API.setSort(ch)}catch(err){toast(errMsg(err),'err')}}})}});
+          try{await API.setSort([...new Set(ch)])}catch(err){toast(errMsg(err),'err')}}})}});
   PROD_MODAL.onClose=()=>{PROD_MODAL=null};
 }
 async function shrinkImage(file,max=520){
@@ -1176,8 +1206,8 @@ async function shrinkImage(file,max=520){
   const k=Math.min(1,max/Math.max(bmp.naturalWidth,bmp.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(bmp.naturalWidth*k);c.height=Math.round(bmp.naturalHeight*k);
   const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(bmp,0,0,c.width,c.height);URL.revokeObjectURL(bmp.src);
   return new Promise(r=>c.toBlob(r,'image/jpeg',.82))}
-async function editProduct(id){
-  const p=id?prodById(id):{active:true,stock:0,low:0};if(!p)return;
+async function editProduct(id,preCat=''){
+  const p=id?prodById(id):{active:true,stock:0,low:0,category:preCat||''};if(!p)return;
   const f=(k,l,v,t='text',cls='')=>`<div class="field ${cls}"><label>${l}</label><input id="fp-${k}" type="${t}" ${t==='number'?'inputmode="decimal" step="any"':''} value="${esc(v??'')}"></div>`;
   const v=await form(id?'แก้ไขสินค้า':'เพิ่มสินค้า',`<div class="fgrid">${f('id','รหัสสินค้า',p.id)}${f('name','ชื่อสินค้า',p.name)}
       <div class="field"><label>หมวดหมู่</label><input id="fp-category" list="catList" value="${esc(p.category||'')}"><datalist id="catList">${cats().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
