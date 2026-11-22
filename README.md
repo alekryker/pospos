@@ -47,3 +47,7 @@
 - GitHub Actions สร้าง APK ให้อัตโนมัติทุกครั้งที่แก้โฟลเดอร์ `android/` หรือกดรันเองที่แท็บ Actions → Android APK
 - ตัวแอปเปิดหน้าเว็บนี้แบบเต็มจอผ่าน Chrome (Trusted Web Activity) แก้หน้าเว็บแล้วแอปอัปเดตตามทันที ไม่ต้องสร้าง APK ใหม่
 - APK เซ็นด้วยกุญแจใน Secret `KEYSTORE_B64` / `KEYSTORE_PASSWORD` ไฟล์ตัวจริงเก็บไว้นอก repo **ห้ามทำหาย** ถ้าหายจะอัปเดตทับแอปเดิมไม่ได้
+
+## เครดิต
+
+ไอคอน: [Uicons by Flaticon](https://www.flaticon.com/uicons) (ใช้ฟรีโดยระบุที่มา)

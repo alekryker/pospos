@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#f5f5f2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="https://cdn-uicons.flaticon.com/2.6.0/uicons-regular-rounded/css/uicons-regular-rounded.css">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-180.png">
 <title>POS</title>
@@ -85,6 +86,10 @@ main{padding-bottom:calc(104px + var(--safeB))}
 .tile:active{transform:scale(.96)}.tile span{font-size:28px;line-height:1}.tile b{font-size:14px;font-weight:700}.tile small{font-size:11px;color:var(--sub);line-height:1.3}
 .secBack{display:flex;align-items:center;gap:10px;margin:0 0 12px}.secBack.hidden{display:none}.secBack b{font-size:16px}
 .disc[hidden]{display:none!important}
+.fi{display:inline-flex;line-height:1;vertical-align:-.14em}.fi::before{line-height:1}
+.sideItem span .fi{font-size:19px;color:var(--sub)}.sideItem.on span .fi{color:var(--brandText)}
+.tile span .fi{font-size:28px;color:var(--brandText)}.menuItem .ic .fi{font-size:20px}.empty b .fi{font-size:40px;color:var(--mute)}
+.imgPick .pv.empty .fi{font-size:30px}.btn .fi,.seg .fi{margin-right:4px}
 .side{position:fixed;top:0;left:0;bottom:0;width:250px;z-index:75;display:flex;flex-direction:column;gap:2px;padding:14px 12px calc(14px + var(--safeB));background:var(--card);border-right:1px solid var(--line);overflow-y:auto;transform:translateX(-105%);transition:transform .25s ease;box-shadow:var(--shadow)}
 .side.open{transform:none}.sideHead{display:flex;align-items:center;justify-content:space-between;padding:2px 4px 12px}.sideHead .brandImg{height:34px}
 .sideLbl{font-size:12px;font-weight:700;color:var(--sub);padding:14px 10px 4px;letter-spacing:.3px}
@@ -358,17 +363,17 @@ main{padding-bottom:calc(104px + var(--safeB))}
 
 <aside class="side" id="side" aria-label="เมนูหลังบ้าน">
   <div class="sideHead"><img class="brandImg" src="icons/logo-wide.png" alt="SLAY"><button class="iconBtn sideX" data-act="sideClose" aria-label="ปิดเมนู">✕</button></div>
-  <button class="sideItem" data-goview="sell" data-side="goview:sell"><span>🛒</span>ขายสินค้า</button>
-  <button class="sideItem" data-goview="bills" data-side="goview:bills"><span>🧾</span>บิลขาย</button>
-  <button class="sideItem" data-goview="report" data-side="goview:report"><span>📊</span>รายงาน</button>
+  <button class="sideItem" data-goview="sell" data-side="goview:sell"><span><i class="fi fi-rr-shopping-cart"></i></span>ขายสินค้า</button>
+  <button class="sideItem" data-goview="bills" data-side="goview:bills"><span><i class="fi fi-rr-receipt"></i></span>บิลขาย</button>
+  <button class="sideItem" data-goview="report" data-side="goview:report"><span><i class="fi fi-rr-chart-histogram"></i></span>รายงาน</button>
   <div class="sideLbl">หลังบ้าน</div>
-  <button class="sideItem" data-act="adminProducts" data-side="act:adminProducts"><span>📦</span>สินค้า</button>
-  <button class="sideItem" data-act="adminStaff" data-side="act:adminStaff"><span>👥</span>พนักงาน</button>
-  <button class="sideItem" data-sec-go="printer" data-side="sec:printer"><span>🖨</span>เครื่องพิมพ์</button>
-  <button class="sideItem" data-sec-go="shop" data-side="sec:shop"><span>🏪</span>ร้าน & ใบเสร็จ</button>
-  <button class="sideItem" data-sec-go="tg" data-side="sec:tg"><span>🔔</span>Telegram</button>
-  <button class="sideItem" data-act="dataTools" data-side="act:dataTools"><span>💾</span>ข้อมูล</button>
-  <button class="sideItem" data-sec-go="general" data-side="sec:general"><span>⚙️</span>ทั่วไป</button>
+  <button class="sideItem" data-act="adminProducts" data-side="act:adminProducts"><span><i class="fi fi-rr-box-open"></i></span>สินค้า</button>
+  <button class="sideItem" data-act="adminStaff" data-side="act:adminStaff"><span><i class="fi fi-rr-users-alt"></i></span>พนักงาน</button>
+  <button class="sideItem" data-sec-go="printer" data-side="sec:printer"><span><i class="fi fi-rr-print"></i></span>เครื่องพิมพ์</button>
+  <button class="sideItem" data-sec-go="shop" data-side="sec:shop"><span><i class="fi fi-rr-shop"></i></span>ร้าน & ใบเสร็จ</button>
+  <button class="sideItem" data-sec-go="tg" data-side="sec:tg"><span><i class="fi fi-rr-bell"></i></span>Telegram</button>
+  <button class="sideItem" data-act="dataTools" data-side="act:dataTools"><span><i class="fi fi-rr-database"></i></span>ข้อมูล</button>
+  <button class="sideItem" data-sec-go="general" data-side="sec:general"><span><i class="fi fi-rr-settings"></i></span>ทั่วไป</button>
 </aside>
 <div class="sideScrim" id="sideScrim" data-act="sideClose"></div>
 <header class="top">
@@ -460,21 +465,21 @@ main{padding-bottom:calc(104px + var(--safeB))}
       <div class="card adminOnly" data-home>
         <h4>หลังบ้าน (เจ้าของร้าน)</h4>
         <div class="tiles">
-          <button class="tile" data-act="adminProducts"><span>📦</span><b>สินค้า</b><small>ราคา สต๊อก รูป</small></button>
-          <button class="tile" data-act="adminStaff"><span>👥</span><b>พนักงาน</b><small>ยูส PIN สิทธิ์</small></button>
-          <button class="tile" data-goview="report"><span>📊</span><b>รายงาน</b><small>ยอดขายรายคน</small></button>
-          <button class="tile" data-goview="bills"><span>🧾</span><b>บิลขาย</b><small>ดู ยกเลิก พิมพ์ซ้ำ</small></button>
-          <button class="tile" data-sec-go="printer"><span>🖨</span><b>เครื่องพิมพ์</b><small>USB บลูทูธ ลิ้นชัก</small></button>
-          <button class="tile" data-sec-go="shop"><span>🏪</span><b>ร้าน &amp; ใบเสร็จ</b><small>ชื่อ พร้อมเพย์ รายชื่อ</small></button>
-          <button class="tile" data-sec-go="tg"><span>🔔</span><b>Telegram</b><small>แจ้งเตือน 2 กลุ่ม</small></button>
-          <button class="tile" data-act="dataTools"><span>💾</span><b>ข้อมูล</b><small>นำเข้า สำรอง CSV</small></button>
-          <button class="tile" data-sec-go="general"><span>⚙️</span><b>ทั่วไป</b><small>กะ ธีม การเชื่อมต่อ</small></button>
+          <button class="tile" data-act="adminProducts"><span><i class="fi fi-rr-box-open"></i></span><b>สินค้า</b><small>ราคา สต๊อก รูป</small></button>
+          <button class="tile" data-act="adminStaff"><span><i class="fi fi-rr-users-alt"></i></span><b>พนักงาน</b><small>ยูส PIN สิทธิ์</small></button>
+          <button class="tile" data-goview="report"><span><i class="fi fi-rr-chart-histogram"></i></span><b>รายงาน</b><small>ยอดขายรายคน</small></button>
+          <button class="tile" data-goview="bills"><span><i class="fi fi-rr-receipt"></i></span><b>บิลขาย</b><small>ดู ยกเลิก พิมพ์ซ้ำ</small></button>
+          <button class="tile" data-sec-go="printer"><span><i class="fi fi-rr-print"></i></span><b>เครื่องพิมพ์</b><small>USB บลูทูธ ลิ้นชัก</small></button>
+          <button class="tile" data-sec-go="shop"><span><i class="fi fi-rr-shop"></i></span><b>ร้าน &amp; ใบเสร็จ</b><small>ชื่อ พร้อมเพย์ รายชื่อ</small></button>
+          <button class="tile" data-sec-go="tg"><span><i class="fi fi-rr-bell"></i></span><b>Telegram</b><small>แจ้งเตือน 2 กลุ่ม</small></button>
+          <button class="tile" data-act="dataTools"><span><i class="fi fi-rr-database"></i></span><b>ข้อมูล</b><small>นำเข้า สำรอง CSV</small></button>
+          <button class="tile" data-sec-go="general"><span><i class="fi fi-rr-settings"></i></span><b>ทั่วไป</b><small>กะ ธีม การเชื่อมต่อ</small></button>
         </div>
       </div>
       <div class="card" data-sec="general"><h4>กะการขาย</h4><div id="shiftBox"></div></div>
       <div class="card" data-sec="general"><h4>การเชื่อมต่อ</h4><div id="connBox"></div></div>
       <div class="card" data-sec="general"><h4>ธีม</h4>
-        <div class="seg full" id="themeSeg"><button data-theme="light">☀️ สว่าง</button><button data-theme="dark">🌙 มืด</button><button data-theme="auto">อัตโนมัติ</button></div></div>
+        <div class="seg full" id="themeSeg"><button data-theme="light"><i class="fi fi-rr-sun"></i> สว่าง</button><button data-theme="dark"><i class="fi fi-rr-moon"></i> มืด</button><button data-theme="auto">อัตโนมัติ</button></div><small class="muted" style="display:block;margin-top:10px;font-size:11.5px">ไอคอน: <a href="https://www.flaticon.com/uicons" target="_blank" rel="noopener" style="color:inherit">Uicons by Flaticon</a></small></div>
       <div class="card adminOnly" id="printerCard" data-sec="printer">
         <h4>เครื่องพิมพ์ใบเสร็จ (เครื่องนี้)</h4>
         <div class="opts" id="pModes"></div>
@@ -504,14 +509,14 @@ main{padding-bottom:calc(104px + var(--safeB))}
       <div class="card adminOnly" id="tgCard" data-sec="tg">
         <h4>แจ้งเตือน Telegram<span class="sp"></span><span class="tag" id="tgInfo">-</span></h4>
         <div class="field"><label>Bot Token (ใช้บอทตัวเดียวกันทั้ง 2 กลุ่ม)</label><input id="tgToken" type="password" autocomplete="off" placeholder="123456:ABC-..."><small>เก็บในฐานข้อมูล หน้าเว็บอ่านกลับไม่ได้ · สร้างบอทได้ที่ @BotFather</small></div>
-        <button class="btn block" data-act="tgFind" style="margin-bottom:12px">🔍 หากลุ่มที่บอทอยู่ (ดึง Chat ID ให้อัตโนมัติ)</button>
+        <button class="btn block" data-act="tgFind" style="margin-bottom:12px"><i class="fi fi-rr-search"></i> หากลุ่มที่บอทอยู่ (ดึง Chat ID ให้อัตโนมัติ)</button>
         <div class="card soft" style="margin-bottom:10px">
-          <div class="switch" style="padding-top:0"><div><b>👑 กลุ่มแอดมิน</b><small>ทุกบิลขาย · ยกเลิกบิล · ปิดกะ + สรุปยอดรายพนักงาน</small></div><label class="tg"><input type="checkbox" id="tgOn"><span></span></label></div>
+          <div class="switch" style="padding-top:0"><div><b><i class="fi fi-rr-crown"></i> กลุ่มแอดมิน</b><small>ทุกบิลขาย · ยกเลิกบิล · ปิดกะ + สรุปยอดรายพนักงาน</small></div><label class="tg"><input type="checkbox" id="tgOn"><span></span></label></div>
           <div class="field"><label>Chat ID กลุ่มแอดมิน</label><input id="tgChat" placeholder="-100..."></div>
           <button class="btn block" data-act="tgTest" data-ch="admin">ส่งทดสอบกลุ่มแอดมิน</button>
         </div>
         <div class="card soft" style="margin-bottom:12px">
-          <div class="switch" style="padding-top:0"><div><b>👥 กลุ่มพนักงาน</b><small>บิลที่พนักงานขาย · เปิด/ปิดกะ (ไม่มีต้นทุน/กำไร)</small></div><label class="tg"><input type="checkbox" id="tgStaffOn"><span></span></label></div>
+          <div class="switch" style="padding-top:0"><div><b><i class="fi fi-rr-users-alt"></i> กลุ่มพนักงาน</b><small>บิลที่พนักงานขาย · เปิด/ปิดกะ (ไม่มีต้นทุน/กำไร)</small></div><label class="tg"><input type="checkbox" id="tgStaffOn"><span></span></label></div>
           <div class="field"><label>Chat ID กลุ่มพนักงาน</label><input id="tgStaffChat" placeholder="-100..."></div>
           <button class="btn block" data-act="tgTest" data-ch="staff">ส่งทดสอบกลุ่มพนักงาน</button>
         </div>
@@ -876,7 +881,7 @@ function prodCard(p){
 function renderGrid(){
   const q=$('q').value.trim().toLowerCase();
   const list=PRODUCTS.filter(p=>p.active!==false&&(!CAT||p.category===CAT)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.id).toLowerCase().includes(q))).sort((a,b)=>(a.order||0)-(b.order||0));
-  $('grid').innerHTML=list.length?list.map(prodCard).join(''):`<div class="empty"><b>${PRODUCTS.length?'🔍':'📦'}</b>${PRODUCTS.length?'ไม่พบสินค้า':'ยังไม่มีสินค้า'}${!PRODUCTS.length&&isAdmin()?'<br><br><button class="btn green" data-act="dataTools">นำเข้าสินค้า</button>':''}</div>`;
+  $('grid').innerHTML=list.length?list.map(prodCard).join(''):`<div class="empty"><b>${PRODUCTS.length?'<i class="fi fi-rr-search"></i>':'<i class="fi fi-rr-box-open"></i>'}</b>${PRODUCTS.length?'ไม่พบสินค้า':'ยังไม่มีสินค้า'}${!PRODUCTS.length&&isAdmin()?'<br><br><button class="btn green" data-act="dataTools">นำเข้าสินค้า</button>':''}</div>`;
 }
 function updateCard(id){const el=$('pc-'+id),p=prodById(id);if(el&&p)el.outerHTML=prodCard(p)}
 
@@ -901,7 +906,7 @@ function renderCart(){renderNoteNames();
       <div class="nm"><b>${esc(x.name)}</b><small class="num">${dpu(x)?`<s>${money0(x.price)}</s> ${money0(x.price-dpu(x))}`:money0(x.price)} / ชิ้น</small>
         <button class="ldisc ${dpu(x)?'on':''}" data-ldisc="${esc(x.id)}">${dpu(x)?'ลด '+money0(dpu(x))+'/ชิ้น':'＋ ส่วนลด'}</button></div>
       <div class="step"><button data-dec="${esc(x.id)}">−</button><span class="num">${x.qty}</span><button data-inc="${esc(x.id)}">+</button></div><div class="lt num">${money0(lineTotal(x))}</div></div>`}).join('')
-    :'<div class="empty" style="padding:34px 10px"><b>🧾</b>ยังไม่มีสินค้า<br><small>แตะสินค้าเพื่อเพิ่มลงบิล</small></div>';
+    :'<div class="empty" style="padding:34px 10px"><b><i class="fi fi-rr-receipt"></i></b>ยังไม่มีสินค้า<br><small>แตะสินค้าเพื่อเพิ่มลงบิล</small></div>';
   $('cCount').textContent=t.count+' ชิ้น';$('sSub').textContent=money(t.subtotal);$('sDisc').textContent='-'+money(t.discount);$('sNet').textContent=money(t.net);
   $('payBtn').disabled=BUSY||!CART.length;$('payBtn').textContent=CART.length?'ชำระเงิน · '+money(t.net):'ชำระเงิน';
   $('cbCount').textContent=t.count;$('cbTotal').textContent=money(t.net);
@@ -983,7 +988,7 @@ function openPayment(){
       <div class="keys">${['7','8','9','4','5','6','1','2','3','.','0','⌫'].map(k=>`<button data-key="${k}">${k}</button>`).join('')}</div></div>
     <div id="payQR"><div class="noncash qrBox">
       ${ppReady()?`<img class="ppQr" src="${qrDataURL(ppPayload(sh.promptpay,t.net),8)}" alt="PromptPay QR"><div class="ppName">พร้อมเพย์ ${esc(fmtPP(sh.promptpay))}</div><b class="num">${money(t.net)}</b>
-        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>${isAdmin()?'<button class="btn" style="margin-top:12px" data-printqr>🖨 พิมพ์ QR ให้ลูกค้า</button>':''}`
+        <div class="muted" style="margin-top:4px">ยอดถูกล็อกไว้ ลูกค้าสแกนแล้วจ่ายได้ทันที</div>${isAdmin()?'<button class="btn" style="margin-top:12px" data-printqr><i class="fi fi-rr-print"></i> พิมพ์ QR ให้ลูกค้า</button>':''}`
       :`<div class="ic">📱</div><div class="muted">ยังไม่ได้ตั้งเลขพร้อมเพย์ (ตั้งค่า → ร้าน)</div><b class="num">${money(t.net)}</b>`}</div></div>
     <div id="payOther" class="hidden"><div class="noncash"><div class="ic">🏦</div><div class="muted" style="margin-top:6px">ตรวจสอบยอดเงินเข้า แล้วกดยืนยัน</div><b class="num">${money(t.net)}</b></div></div>`,
     actions:[{label:'ยืนยันชำระเงิน',cls:'green',onClick:a=>{const n=totals().net;
@@ -1018,7 +1023,7 @@ async function checkout(){
 }
 function showDone(s){let T=null;const stop=()=>{if(T){clearInterval(T);T=null}};modal({title:'',closable:false,body:`<div class="done"><div class="ok"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
   <h3>ชำระเงินสำเร็จ</h3><div class="bill">บิล ${esc(s.billNo)} · ${esc(s.payment)} · ${money(s.net)}</div>${s.payment==='เงินสด'?`<div class="chg"><small>เงินทอน</small><b class="num">${money(s.change)}</b></div>`:''}</div>`,
-  actions:[...(isAdmin()?[{label:'🖨 พิมพ์ใบเสร็จ',onClick:()=>{stop();printReceipt(receiptOf(s))}}]:[]),{label:'บิลใหม่ (3)',cls:'green',onClick:a=>{stop();a.close();backToSell()}}],
+  actions:[...(isAdmin()?[{label:'<i class="fi fi-rr-print"></i> พิมพ์ใบเสร็จ',onClick:()=>{stop();printReceipt(receiptOf(s))}}]:[]),{label:'บิลใหม่ (3)',cls:'green',onClick:a=>{stop();a.close();backToSell()}}],
   onOpen:a=>{let n=3;const btn=[...a.el.querySelectorAll('button')].find(b=>b.textContent.startsWith('บิลใหม่'));
     T=setInterval(()=>{n--;if(btn)btn.textContent=`บิลใหม่ (${Math.max(n,0)})`;if(n<=0){stop();a.close();backToSell()}},1000)}});
 }
@@ -1051,7 +1056,7 @@ async function openBill(no){
   let s=await idbGet('outbox',no);const pending=!!s;
   if(!s)try{s=await API.getSale(no)}catch(e){toast(errMsg(e),'err');return}
   if(!s)return;
-  const acts=isAdmin()?[{label:'🖨 พิมพ์',cls:'green',onClick:()=>printReceipt(receiptOf(s))}]:[];
+  const acts=isAdmin()?[{label:'<i class="fi fi-rr-print"></i> พิมพ์',cls:'green',onClick:()=>printReceipt(receiptOf(s))}]:[];
   if(isAdmin()&&s.status!=='void'&&!pending)acts.unshift({label:'ยกเลิกบิล',cls:'red',onClick:a=>{a.close();voidBill(s)}});
   modal({title:'ใบเสร็จ '+esc(s.billNo),body:`${s.status==='void'?`<div class="tag bad" style="margin-bottom:8px">ยกเลิกแล้ว${s.voidReason?': '+esc(s.voidReason):''}</div>`:''}${pending?'<div class="tag warn" style="margin-bottom:8px">ยังไม่ได้ส่งขึ้นฐานข้อมูล</div>':''}
     <div class="paper" style="width:${Number(DEV.paper)===58?'230px':'300px'}">${receiptHtml(receiptOf(s))}</div>`,actions:acts});
@@ -1128,14 +1133,14 @@ async function editProduct(id){
       <div class="field"><label>หมวดหมู่</label><input id="fp-category" list="catList" value="${esc(p.category||'')}"><datalist id="catList">${cats().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></div>
       ${f('price','ราคาขาย',p.price??'','number')}${f('cost','ต้นทุน',p.cost??'','number')}${f('stock','คงเหลือ',p.stock??0,'number')}${f('low','แจ้งเตือนเมื่อเหลือ',p.low??0,'number')}
       <div class="field"><label>สถานะ</label><select id="fp-active"><option value="1" ${p.active!==false?'selected':''}>เปิดขาย</option><option value="0" ${p.active===false?'selected':''}>ปิดขาย</option></select></div>
-      <div class="field full"><label>รูปสินค้า</label><div class="imgPick">${p.image?`<img class="pv" id="fp-pv" src="${esc(p.image)}" referrerpolicy="no-referrer" alt="">`:'<span class="pv empty" id="fp-pv">📷</span>'}
-        <div class="grow" style="display:flex;flex-direction:column;gap:8px"><button class="btn" type="button" id="fp-pick">📷 ถ่ายรูป / เลือกรูป</button>${p.image?'<button class="mini" type="button" id="fp-clear" style="align-self:flex-start">ลบรูป</button>':''}</div>
+      <div class="field full"><label>รูปสินค้า</label><div class="imgPick">${p.image?`<img class="pv" id="fp-pv" src="${esc(p.image)}" referrerpolicy="no-referrer" alt="">`:'<span class="pv empty" id="fp-pv"><i class="fi fi-rr-picture"></i></span>'}
+        <div class="grow" style="display:flex;flex-direction:column;gap:8px"><button class="btn" type="button" id="fp-pick"><i class="fi fi-rr-camera"></i> ถ่ายรูป / เลือกรูป</button>${p.image?'<button class="mini" type="button" id="fp-clear" style="align-self:flex-start">ลบรูป</button>':''}</div>
         <input type="file" id="fp-file" accept="image/*" hidden></div></div>
       ${f('image','หรือวางลิงก์รูป (URL / Google Drive)',p.image,'text','full')}</div>${id?'<button class="btn red block" data-del type="button">ลบสินค้านี้</button>':''}`,
     'บันทึก',el=>{const g=k=>el.querySelector('#fp-'+k).value.trim();
       const d={id:g('id')||('P'+uid()),name:g('name'),category:g('category'),price:Number(g('price')||0),cost:Number(g('cost')||0),stock:Number(g('stock')||0),low:Number(g('low')||0),active:g('active')==='1',image:driveImg(g('image')),order:p.order||PRODUCTS.length+1};
       if(!d.name)return 'กรุณากรอกชื่อสินค้า';if(PRODUCTS.some(x=>x.id===d.id&&x.id!==id))return 'รหัสสินค้านี้มีอยู่แล้ว';return d},
-    (a,finish)=>{const q=k=>a.el.querySelector('#fp-'+k),setPv=u=>{const o=q('pv'),n=document.createElement(u?'img':'span');n.id='fp-pv';n.className='pv'+(u?'':' empty');if(u){n.src=u;n.referrerPolicy='no-referrer'}else n.textContent='📷';o.replaceWith(n)};
+    (a,finish)=>{const q=k=>a.el.querySelector('#fp-'+k),setPv=u=>{const o=q('pv'),n=document.createElement(u?'img':'span');n.id='fp-pv';n.className='pv'+(u?'':' empty');if(u){n.src=u;n.referrerPolicy='no-referrer'}else n.innerHTML='<i class="fi fi-rr-picture"></i>';o.replaceWith(n)};
       q('pick').onclick=()=>q('file').click();if(q('clear'))q('clear').onclick=()=>{q('image').value='';setPv('')};
       q('file').onchange=async e=>{const file=e.target.files[0];e.target.value='';if(!file)return;
         try{const url=await guard(async()=>API.uploadImage(await shrinkImage(file)),'กำลังอัปโหลดรูป...');q('image').value=url;setPv(url);toast('ใส่รูปแล้ว กดบันทึกเพื่อเก็บ','ok')}catch(err){}};
@@ -1249,13 +1254,13 @@ function tgSale(s){const L=[`💰 <b>บิลใหม่ ${tgEsc(s.billNo)}</b
 function hasOldLocal(){try{return !!localStorage.getItem('p2:products')||!!localStorage.getItem('p2:staff')}catch(e){return false}}
 function dataTools(){
   modal({title:'ข้อมูล',body:`<div class="card soft"><h4>นำเข้าสินค้า</h4>
-      <button class="menuItem" data-dt="old"><span class="ic">⬇️</span><span class="grow"><b>ดึงสินค้าจาก Apps Script ตัวเดิม</b><small>ดึงครั้งเดียว (ถ้ายังใช้ได้)</small></span><span class="chev">›</span></button>
-      <button class="menuItem" data-dt="csv"><span class="ic">📄</span><span class="grow"><b>นำเข้าจากไฟล์ CSV</b><small>Google Sheet: ไฟล์ → ดาวน์โหลด → CSV</small></span><span class="chev">›</span></button>
-      ${hasOldLocal()&&!DEMO?'<button class="menuItem" data-dt="migrate"><span class="ic">☁️</span><span class="grow"><b>อัปโหลดข้อมูลจากเครื่องนี้ (เวอร์ชันก่อน)</b><small>สินค้า พนักงาน บิล ที่เคยเก็บไว้ในเครื่องนี้</small></span><span class="chev">›</span></button>':''}</div>
+      <button class="menuItem" data-dt="old"><span class="ic"><i class="fi fi-rr-download"></i></span><span class="grow"><b>ดึงสินค้าจาก Apps Script ตัวเดิม</b><small>ดึงครั้งเดียว (ถ้ายังใช้ได้)</small></span><span class="chev">›</span></button>
+      <button class="menuItem" data-dt="csv"><span class="ic"><i class="fi fi-rr-file-csv"></i></span><span class="grow"><b>นำเข้าจากไฟล์ CSV</b><small>Google Sheet: ไฟล์ → ดาวน์โหลด → CSV</small></span><span class="chev">›</span></button>
+      ${hasOldLocal()&&!DEMO?'<button class="menuItem" data-dt="migrate"><span class="ic"><i class="fi fi-rr-cloud-upload"></i></span><span class="grow"><b>อัปโหลดข้อมูลจากเครื่องนี้ (เวอร์ชันก่อน)</b><small>สินค้า พนักงาน บิล ที่เคยเก็บไว้ในเครื่องนี้</small></span><span class="chev">›</span></button>':''}</div>
     <div class="card soft"><h4>สำรอง / ส่งออก</h4>
-      <button class="menuItem" data-dt="backup"><span class="ic">💾</span><span class="grow"><b>สำรองข้อมูลทั้งหมด</b><small>ดาวน์โหลดไฟล์ .json</small></span><span class="chev">›</span></button>
-      <button class="menuItem" data-dt="restore"><span class="ic">♻️</span><span class="grow"><b>นำเข้าไฟล์สำรอง</b><small>รวมเข้ากับข้อมูลปัจจุบัน</small></span><span class="chev">›</span></button>
-      <button class="menuItem" data-dt="salescsv"><span class="ic">📊</span><span class="grow"><b>ส่งออกบิลขายเป็น CSV</b><small>เปิดด้วย Excel / Google Sheet</small></span><span class="chev">›</span></button></div>`,
+      <button class="menuItem" data-dt="backup"><span class="ic"><i class="fi fi-rr-database"></i></span><span class="grow"><b>สำรองข้อมูลทั้งหมด</b><small>ดาวน์โหลดไฟล์ .json</small></span><span class="chev">›</span></button>
+      <button class="menuItem" data-dt="restore"><span class="ic"><i class="fi fi-rr-refresh"></i></span><span class="grow"><b>นำเข้าไฟล์สำรอง</b><small>รวมเข้ากับข้อมูลปัจจุบัน</small></span><span class="chev">›</span></button>
+      <button class="menuItem" data-dt="salescsv"><span class="ic"><i class="fi fi-rr-file-export"></i></span><span class="grow"><b>ส่งออกบิลขายเป็น CSV</b><small>เปิดด้วย Excel / Google Sheet</small></span><span class="chev">›</span></button></div>`,
     onOpen:a=>a.el.addEventListener('click',e=>{const b=e.target.closest('[data-dt]');if(!b)return;
       ({old:importOld,csv:()=>pickFile('.csv,text/csv',importCSV),migrate:migrateLocal,backup,restore:()=>pickFile('.json,application/json',restoreBackup),salescsv:exportSalesCSV})[b.dataset.dt]()})});
 }
@@ -1505,7 +1510,7 @@ function loadSettingsUI(){const s=shop();$('rShop').value=s.shop||'';$('rHead').
 function sideOpen(){$('side').classList.add('open');$('sideScrim').classList.add('on')}
 function sideClose(){$('side').classList.remove('open');$('sideScrim').classList.remove('on')}
 function markSide(){document.querySelectorAll('.sideItem').forEach(b=>{const [k,v]=b.dataset.side.split(':');b.classList.toggle('on',k==='goview'?(VIEW===v&&!(VIEW==='menu')):k==='sec'?(VIEW==='menu'&&MENU_SEC===v):false)})}
-let MENU_SEC='';const SEC_NAMES={printer:'🖨 เครื่องพิมพ์',shop:'🏪 ร้าน & ใบเสร็จ',tg:'🔔 Telegram',general:'⚙️ ทั่วไป'};
+let MENU_SEC='';const SEC_NAMES={printer:'เครื่องพิมพ์',shop:'ร้าน & ใบเสร็จ',tg:'Telegram',general:'ทั่วไป'};
 function showSec(sec){const adm=isAdmin();MENU_SEC=adm?sec:'';
   document.querySelectorAll('#v-menu [data-sec]').forEach(c=>{c.style.display=!adm||c.dataset.sec===MENU_SEC?'':'none'});
   document.querySelectorAll('#v-menu [data-home]').forEach(c=>c.style.display=MENU_SEC?'none':'');
