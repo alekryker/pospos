@@ -1463,16 +1463,21 @@ function slipHtml(r){return `${rcShop()?`<div class="c bold" style="font-size:1.
   ${(r.items||[]).map(i=>`<div class="lr bold" style="font-size:1.1em"><span>${esc(i.name)}</span><span style="white-space:nowrap">x ${i.qty}</span></div>`).join('')}<hr>
   <div class="lr bold"><span>รวม</span><span>${itemCount(r)} ชิ้น</span></div>`}
 const itemCount=r=>(r.items||[]).reduce((n,i)=>n+(Number(i.qty)||0),0);
-function receiptHtml(r){const pp=shop().promptpay;return `<div class="c bold" style="font-size:1.35em">${esc(rcShop())}</div>${rcHead().map(l=>`<div class="c">${esc(l)}</div>`).join('')}
-  <div class="c bold" style="margin-top:4px">${r.pre?'ใบแจ้งยอด (ยังไม่ชำระ)':'ใบเสร็จรับเงิน'}</div><div class="c">${esc(r.datetime)}</div><hr>${r.pre?'':`<div>บิล: ${esc(r.billNo)}</div>`}<div>พนักงาน: ${esc(r.staff)}</div><hr>
-  <div class="lr bold"><span>สินค้า</span><span>จำนวน</span></div>
-  ${(r.items||[]).map(i=>`<div class="lr bold"><span>${esc(i.name)}</span><span style="white-space:nowrap">x ${i.qty}</span></div><div class="lr"><span>&nbsp;&nbsp;@${money0(unitOf(i))}${Number(i.discount)?` · ลด -${money0(i.discount)}`:''}</span><span>${money(i.total)}</span></div>`).join('')}
-  <hr><div class="lr bold"><span>รวม ${(r.items||[]).length} รายการ</span><span>${itemCount(r)} ชิ้น</span></div><hr>
-  <div class="lr"><span>รวม</span><span>${money(r.subtotal)}</span></div>${Number(r.discount)?`<div class="lr"><span>ส่วนลด</span><span>-${money(r.discount)}</span></div>`:''}
-  <div class="lr bold" style="font-size:1.2em"><span>${r.pre?'ยอดที่ต้องชำระ':'สุทธิ'}</span><span>${money(r.net)}</span></div>${r.pre?'':`<div class="lr"><span>ชำระ</span><span>${esc(r.payment)}</span></div>`}
-  ${r.payment==='เงินสด'?`<div class="lr"><span>รับเงิน</span><span>${money(r.paid)}</span></div><div class="lr"><span>เงินทอน</span><span>${money(r.change)}</span></div>`:''}${r.note?`<div>หมายเหตุ: ${esc(r.note)}</div>`:''}
-  ${showQR(r)?`<hr><div class="c bold">สแกนจ่ายด้วยพร้อมเพย์</div><div class="c"><img src="${qrDataURL(ppPayload(pp,r.net),6)}" alt="" style="width:62%;max-width:180px;display:inline-block;image-rendering:pixelated"></div>
-    <div class="c">พร้อมเพย์ ${esc(fmtPP(pp))}</div><div class="c bold">${money(r.net)}</div>`:''}<hr><div class="c">${esc(rcFoot())}</div>`}
+const payName=m=>m==='QR'?'QR PromptPay':String(m||'-');
+function receiptHtml(r){const pp=shop().promptpay,g='color:#666',box='border:1.5px solid #000;border-radius:8px;padding:6px 8px;margin:6px 0';
+  const kv=(k,v)=>`<div class="lr" style="margin:2px 0"><span style="${g}">${k}</span><b>${esc(v)}</b></div>`;
+  return `<div class="c bold" style="font-size:1.6em;line-height:1.2">${esc(rcShop())}</div>${rcHead().map(l=>`<div class="c" style="${g};font-size:.9em">${esc(l)}</div>`).join('')}
+  <div class="c" style="${g};font-size:.85em;letter-spacing:.06em;margin-top:2px">${r.pre?'BILL':'PAYMENT RECEIPT'}</div><div class="c bold" style="font-size:1.25em">${r.pre?'ใบแจ้งยอด':'ใบเสร็จรับเงิน'}</div>
+  <div class="c"><span style="display:inline-block;border:1.5px solid #000;border-radius:99px;padding:0 10px;font-size:.85em;font-weight:700">${r.pre?'ยังไม่ชำระ':'✓ ชำระเงินแล้ว'}</span></div>
+  <div style="border-top:1.5px solid #000;margin:8px 0 6px"></div>${r.pre?'':kv('เลขที่บิล',r.billNo)}${kv('วันที่ / เวลา',r.datetime)}${kv('พนักงาน',r.staff)}
+  <div style="border-top:1.5px solid #000;margin:6px 0"></div><div class="lr"><b>รายการสินค้า</b><span style="${g};font-size:.85em">ราคา (บาท)</span></div>
+  ${(r.items||[]).map(i=>`<div class="lr" style="align-items:center;margin:4px 0"><span><b>${esc(i.name)}</b><br><span style="${g};font-size:.9em">${i.qty} × ${money0(unitOf(i))}${Number(i.discount)?` · ลด -${money0(i.discount)}`:''}</span></span><b style="white-space:nowrap">${money(i.total)}</b></div>`).join('')}
+  <div style="border-top:1.5px solid #000;margin:6px 0"></div><div class="lr"><span>รวม ${(r.items||[]).length} รายการ (${itemCount(r)} ชิ้น)</span><b>${money(r.subtotal)}</b></div>${Number(r.discount)?`<div class="lr"><span>ส่วนลด</span><b>-${money(r.discount)}</b></div>`:''}
+  <div style="${box}"><div class="lr" style="align-items:center"><b>${r.pre?'ยอดที่ต้องชำระ':'ยอดชำระสุทธิ'}</b><b style="font-size:1.35em">${money(r.net)}</b></div>${r.pre?'':`<div class="lr"><span style="${g}">ช่องทางชำระเงิน</span><b>${esc(payName(r.payment))}</b></div>`}
+  ${r.payment==='เงินสด'&&!r.pre?`<div class="lr"><span style="${g}">รับเงิน</span><b>${money(r.paid)}</b></div><div class="lr"><span style="${g}">เงินทอน</span><b>${money(r.change)}</b></div>`:''}</div>
+  ${r.note?`<div class="bold" style="margin-top:6px">หมายเหตุ</div><div style="${box}">${esc(r.note)}</div>`:''}
+  ${showQR(r)?`<div class="c bold" style="margin-top:6px">สแกนจ่ายด้วยพร้อมเพย์</div><div class="c"><img src="${qrDataURL(ppPayload(pp,r.net),6)}" alt="" style="width:62%;max-width:180px;display:inline-block;image-rendering:pixelated"></div>
+    <div class="c">พร้อมเพย์ ${esc(fmtPP(pp))}</div><div class="c bold">${money(r.net)}</div>`:''}<div style="border-top:1.5px solid #000;margin:8px 0 4px"></div><div class="c">${esc(rcFoot())}</div>`}
 const testReceipt=()=>({billNo:'TEST',datetime:fmtTime(Date.now()),staff:USER?USER.name:'-',items:[{name:'ทดสอบภาษาไทย สินค้าตัวอย่าง',qty:2,price:60,total:120},{name:'Test item ABC',qty:1,price:45,total:45}],subtotal:165,discount:5,net:160,payment:'เงินสด',paid:200,change:40,note:'พิมพ์ทดสอบ'});
 function segWords(t){t=String(t??'');if(window.Intl&&Intl.Segmenter){try{return Array.from(new Intl.Segmenter('th',{granularity:'word'}).segment(t),s=>s.segment)}catch(e){}}return Array.from(t)}
 function wrapText(ctx,text,maxW){const L=[];let cur='';for(const w of segWords(text)){if(ctx.measureText(cur+w).width<=maxW||!cur)cur+=w;else{L.push(cur.trimEnd());cur=w.trimStart()}}if(cur)L.push(cur);return L.length?L:['']}
@@ -1485,16 +1490,28 @@ async function receiptCanvas(r,paper=DEV.paper){
   const left=(t,s=F,b=false)=>{font(s,b);x.textAlign='left';wrapText(x,t,W-M*2).forEach(l=>{x.fillText(l,M,y);y+=s+8})};
   const lr=(l,rt,s=F,b=false)=>{font(s,b);const rw=x.measureText(rt).width;x.textAlign='left';wrapText(x,l,W-M*2-rw-12).forEach((ln,i)=>{x.fillText(ln,M,y);if(!i){x.textAlign='right';x.fillText(rt,W-M,y);x.textAlign='left'}y+=s+8})};
   const rule=()=>{y+=2;for(let i=M;i<W-M;i+=10)x.fillRect(i,y,6,2);y+=10};
-  center(rcShop(),F+12,true);rcHead().forEach(l=>center(l,F-2));y+=4;center(r.pre?'ใบแจ้งยอด (ยังไม่ชำระ)':'ใบเสร็จรับเงิน',F+2,true);center(r.datetime,F-2);rule();
-  if(!r.pre)left('บิล: '+r.billNo);left('พนักงาน: '+r.staff);rule();
-  lr('สินค้า','จำนวน',F,true);(r.items||[]).forEach(i=>{lr(i.name,'x '+i.qty,F+2,true);lr('   @'+money0(unitOf(i)),money(i.total))});rule();
-  lr('รวม '+(r.items||[]).length+' รายการ',itemCount(r)+' ชิ้น',F+2,true);rule();
-  lr('รวม',money(r.subtotal));if(Number(r.discount))lr('ส่วนลด','-'+money(r.discount));lr(r.pre?'ยอดที่ต้องชำระ':'สุทธิ',money(r.net),F+8,true);if(!r.pre)lr('ชำระ',String(r.payment));
-  if(r.payment==='เงินสด'){lr('รับเงิน',money(r.paid));lr('เงินทอน',money(r.change))}if(r.note)left('หมายเหตุ: '+r.note);
-  if(showQR(r)){const pp=shop().promptpay,m=qrMatrix(ppPayload(pp,r.net));if(m){rule();center('สแกนจ่ายด้วยพร้อมเพย์',F,true);
+  const line=(t=2)=>{y+=4;x.fillRect(M,y,W-M*2,t);y+=t+8};
+  const rbox=(x0,y0,w,h,rad=12)=>{x.lineWidth=2;x.beginPath();if(x.roundRect)x.roundRect(x0,y0,w,h,rad);else x.rect(x0,y0,w,h);x.stroke()};
+  const kv=(k,v,s=F)=>{font(s,true);const vw=Math.min(x.measureText(v).width,W-M*2-120);font(s-2);x.textAlign='left';x.fillText(k,M,y+2);font(s,true);x.textAlign='right';x.fillText(v,W-M,y);x.textAlign='left';y+=s+12};
+  center(rcShop(),F+16,true);rcHead().forEach(l=>center(l,F-4));
+  center(r.pre?'BILL':'PAYMENT RECEIPT',F-6);center(r.pre?'ใบแจ้งยอด':'ใบเสร็จรับเงิน',F+4,true);
+  {const t=r.pre?'ยังไม่ชำระ':'✓ ชำระเงินแล้ว';font(F-4,true);const tw=x.measureText(t).width+28,h=F+8;y+=2;rbox((W-tw)/2,y,tw,h,h/2);x.textAlign='center';x.fillText(t,W/2,y+5);x.textAlign='left';y+=h+6}
+  line();if(!r.pre)kv('เลขที่บิล',String(r.billNo));kv('วันที่ / เวลา',String(r.datetime));kv('พนักงาน',String(r.staff||'-'));
+  line();font(F,true);x.fillText('รายการสินค้า',M,y);font(F-6);x.textAlign='right';x.fillText('ราคา (บาท)',W-M,y+4);x.textAlign='left';y+=F+14;
+  (r.items||[]).forEach(i=>{const tot=money(i.total);font(F,true);const tw=x.measureText(tot).width;const L=(font(F,true),wrapText(x,String(i.name),W-M*2-tw-14));
+    const sub=i.qty+' × '+money0(unitOf(i))+(Number(i.discount)?' · ลด -'+money0(i.discount):'');const h=L.length*(F+6)+(F-2)+4,y0=y;
+    font(F,true);L.forEach(l=>{x.fillText(l,M,y);y+=F+6});font(F-4);x.fillText(sub,M,y);y+=F+2;
+    font(F,true);x.textAlign='right';x.fillText(tot,W-M,y0+(h-F)/2);x.textAlign='left';y+=8});
+  line();lr('รวม '+(r.items||[]).length+' รายการ ('+itemCount(r)+' ชิ้น)',money(r.subtotal),F-2);if(Number(r.discount))lr('ส่วนลด','-'+money(r.discount),F-2);
+  {y+=6;const y0=y,P=12;y+=P;font(F,true);x.fillText(r.pre?'ยอดที่ต้องชำระ':'ยอดชำระสุทธิ',M+P,y+6);font(F+10,true);x.textAlign='right';x.fillText(money(r.net),W-M-P,y);x.textAlign='left';y+=F+18;
+    const row=(k,v)=>{font(F-4);x.fillText(k,M+P,y+2);font(F-2,true);x.textAlign='right';x.fillText(v,W-M-P,y);x.textAlign='left';y+=F+6};
+    if(!r.pre)row('ช่องทางชำระเงิน',payName(r.payment));if(r.payment==='เงินสด'&&!r.pre){row('รับเงิน',money(r.paid));row('เงินทอน',money(r.change))}
+    y+=P-6;rbox(M,y0,W-M*2,y-y0);y+=10}
+  if(r.note){font(F,true);x.fillText('หมายเหตุ',M,y);y+=F+10;const y0=y,P=12;font(F);const L=wrapText(x,String(r.note),W-M*2-P*2);y+=P;L.forEach(l=>{x.fillText(l,M+P,y);y+=F+6});y+=P-6;rbox(M,y0,W-M*2,y-y0);y+=10}
+  if(showQR(r)){const pp=shop().promptpay,m=qrMatrix(ppPayload(pp,r.net));if(m){y+=4;center('สแกนจ่ายด้วยพร้อมเพย์',F,true);
     const px=Math.floor(W*0.62/(m.n+2)),sz=px*m.n,x0=Math.floor((W-sz)/2);y+=6;for(let rr=0;rr<m.n;rr++)for(let cc=0;cc<m.n;cc++)if(m.dark(rr,cc))x.fillRect(x0+cc*px,y+rr*px,px,px);
     y+=sz+10;center('พร้อมเพย์ '+fmtPP(pp),F-2);center(money(r.net),F+4,true)}}
-  rule();center(rcFoot());y+=16;
+  line();center(rcFoot(),F-2);y+=16;
   const out=document.createElement('canvas');out.width=W;out.height=Math.ceil(y);const o=out.getContext('2d',{alpha:false,willReadFrequently:true});o.fillStyle='#fff';o.fillRect(0,0,W,out.height);o.drawImage(c,0,0);return out;
 }
 function canvasRasterChunk(cv,sy,rows){const img=cv.getContext('2d').getImageData(0,sy,cv.width,rows),wb=Math.ceil(cv.width/8),data=new Uint8Array(wb*rows);let di=0;
