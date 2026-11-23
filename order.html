@@ -191,7 +191,8 @@ function card(p){const q=CART[p.id]||0;
       ${p.soldout?'':q?`<div class="step"><button data-dec="${esc(p.id)}" aria-label="-"><i class="fi fi-rr-minus-small"></i></button><span>${q}</span><button class="p" data-inc="${esc(p.id)}" aria-label="+"><i class="fi fi-rr-plus-small"></i></button></div>`
         :`<button class="add" data-inc="${esc(p.id)}" aria-label="+"><i class="fi fi-rr-plus"></i></button>`}</div></div></article>`}
 
-function cats(){const m=new Map();MENU.forEach(p=>m.set(catOf(p),(m.get(catOf(p))||0)+1));return [...m.entries()]}
+let CATORD=[];
+function cats(){const m=new Map();MENU.forEach(p=>m.set(catOf(p),(m.get(catOf(p))||0)+1));const ix=c=>{const k=CATORD.indexOf(c);return k<0?1e6:k};return [...m.entries()].map((e,n)=>[e,n]).sort((x,y)=>ix(x[0][0])-ix(y[0][0])||x[1]-y[1]).map(x=>x[0])}
 function renderChips(){$('chips').innerHTML=`<button class="chip ${CHIP==='rec'?'on':''}" data-chip="rec">${t('rec')}</button>`+
   cats().map(([c,n])=>`<button class="chip ${CHIP===c?'on':''}" data-chip="${esc(c)}">${esc(c)} <small>${n}</small></button>`).join('')}
 function sec(title,icon,hint,items,h){if(!items.length)return'';return `<section class="sec"><div class="sech"><b><i class="fi fi-rr-${icon} ${icon==='star'?'g':''}"></i>${title}</b><small>${hint||''}</small></div>
@@ -242,7 +243,7 @@ $('q').addEventListener('input',e=>{Q=e.target.value;render()});
 addEventListener('scroll',()=>$('head').classList.toggle('scrolled',scrollY>4),{passive:true});
 
 (async()=>{applyLang();
-  try{const d=await rpc('public_menu');SHOP=d.shop||'SLAY';MENU=(d.products||[]).map(p=>({...p,price:Number(p.price)||0}));
+  try{const d=await rpc('public_menu');SHOP=d.shop||'SLAY';CATORD=Array.isArray(d.cat_order)?d.cat_order:[];MENU=(d.products||[]).map(p=>({...p,price:Number(p.price)||0}));
     $('shop').textContent=SHOP;document.title=(LANG==='en'?'Order · ':'สั่งอาหาร · ')+SHOP;
     Object.keys(CART).forEach(id=>{if(!byId(id))delete CART[id]});renderChips();render()}
   catch(e){$('main').innerHTML=`<div class="empty"><i class="fi fi-rr-time-past"></i>${t('loadErr')}<br><br><button class="chip on" onclick="location.reload()">↻</button></div>`}})();

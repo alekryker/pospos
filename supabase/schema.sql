@@ -475,3 +475,23 @@ begin
 end $$;
 
 notify pgrst, 'reload schema';
+
+-- ===== หน้าสั่ง QR: เรียงหมวดตามที่ตั้งในหลังบ้าน =====
+create or replace function pos.public_menu() returns jsonb
+language sql stable security definer set search_path = pos as $$
+  with best as (
+    select it->>'id' as id, sum((it->>'qty')::numeric) as q
+    from pos.sales s, jsonb_array_elements(s.items) it
+    where s.status = 'ok' and s.ts > now() - interval '30 days'
+    group by 1 order by 2 desc limit 8
+  )
+  select jsonb_build_object(
+    'shop', coalesce((select data->>'shop' from pos.settings where id = 1), ''),
+    'cat_order', coalesce((select data->'catOrder' from pos.settings where id = 1), '[]'::jsonb),
+    'products', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', p.id, 'name', p.name, 'name_en', coalesce(p.name_en, ''), 'category', coalesce(p.category, ''),
+        'price', p.price, 'image', coalesce(p.image, ''), 'featured', coalesce(p.featured, false),
+        'best', exists (select 1 from best b where b.id = p.id), 'soldout', p.stock <= 0
+      ) order by p.sort, p.name) from pos.products p where p.active and (p.qr_show or not exists (select 1 from pos.products z where z.qr_show and z.active))), '[]'::jsonb));
+$$;
+notify pgrst, 'reload schema';
