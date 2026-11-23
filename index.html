@@ -613,6 +613,7 @@ const LocalAPI={
   async upsertProducts(l){const m=new Map(local.get('products',[]).map(p=>[p.id,p]));l.forEach(p=>m.set(p.id,p));local.set('products',[...m.values()])},
   async replaceProducts(l){local.set('products',l)},
   async deleteProduct(id){local.set('products',local.get('products',[]).filter(p=>p.id!==id))},
+  async setQR(ids,on){local.set('products',local.get('products',[]).map(p=>ids.includes(p.id)?{...p,qr:on}:p))},
   async setCategory(ids,cat){local.set('products',local.get('products',[]).map(p=>ids.includes(p.id)?{...p,category:cat}:p))},
   async setSort(l){const m=new Map(l.map(p=>[p.id,p.order]));local.set('products',local.get('products',[]).map(p=>m.has(p.id)?{...p,order:m.get(p.id)}:p))},
   async uploadImage(blob){return new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(blob)})},
@@ -646,8 +647,8 @@ const LocalAPI={
 let sb=null;
 const chk=({data,error})=>{if(error)throw new Error(error.message);return data};
 const iso=t=>new Date(t).toISOString();
-const p2db=p=>({id:p.id,name:p.name,category:p.category||'',price:+p.price||0,cost:+p.cost||0,stock:+p.stock||0,low:+p.low||0,image:p.image||'',name_en:p.nameEn||'',featured:!!p.featured,active:p.active!==false,sort:+p.order||0,updated_at:iso(Date.now())});
-const db2p=r=>({id:r.id,name:r.name,category:r.category||'',price:+r.price||0,cost:+r.cost||0,stock:+r.stock||0,low:+r.low||0,image:r.image||'',nameEn:r.name_en||'',featured:!!r.featured,active:r.active!==false,order:r.sort||0});
+const p2db=p=>({id:p.id,name:p.name,category:p.category||'',price:+p.price||0,cost:+p.cost||0,stock:+p.stock||0,low:+p.low||0,image:p.image||'',name_en:p.nameEn||'',featured:!!p.featured,qr_show:!!p.qr,active:p.active!==false,sort:+p.order||0,updated_at:iso(Date.now())});
+const db2p=r=>({id:r.id,name:r.name,category:r.category||'',price:+r.price||0,cost:+r.cost||0,stock:+r.stock||0,low:+r.low||0,image:r.image||'',nameEn:r.name_en||'',featured:!!r.featured,qr:!!r.qr_show,active:r.active!==false,order:r.sort||0});
 const s2db=s=>({id:s.id,name:s.name,role:s.role,pin_hash:s.pinHash,active:s.active!==false,updated_at:iso(Date.now())});
 const db2s=r=>({id:r.id,name:r.name,role:r.role,pinHash:r.pin_hash,active:r.active!==false,username:r.username||'',userId:r.user_id||null});
 const db2sale=r=>({billNo:r.bill_no,ts:Date.parse(r.ts),day:r.day,staff:r.staff,staffId:r.staff_id,shiftId:r.shift_id,device:r.device,items:r.items||[],
@@ -663,6 +664,7 @@ const CloudAPI={
   async upsertProducts(l){for(let i=0;i<l.length;i+=500)chk(await sb.from('products').upsert(l.slice(i,i+500).map(p2db)))},
   async replaceProducts(l){chk(await sb.from('products').delete().neq('id','\u0000'));await CloudAPI.upsertProducts(l)},
   async deleteProduct(id){chk(await sb.from('products').delete().eq('id',id))},
+  async setQR(ids,on){for(let i=0;i<ids.length;i+=100)chk(await sb.from('products').update({qr_show:on,updated_at:iso(Date.now())}).in('id',ids.slice(i,i+100)))},
   async setCategory(ids,cat){for(let i=0;i<ids.length;i+=100)chk(await sb.from('products').update({category:cat,updated_at:iso(Date.now())}).in('id',ids.slice(i,i+100)))},
   async setSort(l){const t=iso(Date.now());await Promise.all(l.map(async p=>chk(await sb.from('products').update({sort:p.order,updated_at:t}).eq('id',p.id))))},
   async uploadImage(blob){const path=`p/${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}.jpg`;
@@ -1199,7 +1201,7 @@ function manageCats(){const draw=el=>{const counts=new Map();PRODUCTS.forEach(p=
 const catKey=p=>p.category||'';
 function adminProducts(){AP_SEL=new Set();
   PROD_MODAL=modal({title:'สินค้า',body:`<div class="search" style="margin-bottom:6px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="apQ" type="search" placeholder="ค้นหาสินค้า"></div>
-    <div class="chips" id="apCats" style="padding:6px 0 8px"></div><div class="apBulk hidden" id="apBulk"><span id="apSelN"></span><button class="mini green" data-apmove>ย้ายไปหมวด…</button><button class="mini" data-apclr>ยกเลิก</button></div><div id="apList"></div>`,
+    <div class="chips" id="apCats" style="padding:6px 0 8px"></div><div class="apBulk hidden" id="apBulk"><span id="apSelN"></span><button class="mini green" data-apmove>ย้ายไปหมวด…</button><button class="mini" data-apqr="1">แสดงใน QR</button><button class="mini" data-apqr="0">ซ่อนจาก QR</button><button class="mini" data-apclr>ยกเลิก</button></div><div id="apList"></div>`,
     actions:[{label:'<i class="fi fi-rr-edit"></i> จัดการหมวด',onClick:()=>manageCats()},{label:'＋ เพิ่มสินค้า',cls:'green',onClick:()=>editProduct(null,AP_CAT==='*'?'':AP_CAT)}],
     onOpen:a=>{const vis=()=>{const q=a.el.querySelector('#apQ').value.trim().toLowerCase();
         return PRODUCTS.filter(p=>(AP_CAT==='*'||catKey(p)===AP_CAT)&&(!q||String(p.name).toLowerCase().includes(q)||String(p.id).toLowerCase().includes(q))).sort((x,y)=>(x.order||0)-(y.order||0))};
@@ -1210,7 +1212,7 @@ function adminProducts(){AP_SEL=new Set();
         const l=vis();
         a.el.querySelector('#apList').innerHTML=l.length?l.map(p=>`<div class="row"><input type="checkbox" class="apck" data-apsel="${esc(p.id)}" ${AP_SEL.has(p.id)?'checked':''}>${p.image?`<img class="th" src="${esc(p.image)}" referrerpolicy="no-referrer" alt="">`:'<span class="th"></span>'}
           <div class="grow"><b>${esc(p.name)} ${p.active===false?'<span class="tag bad">ปิดขาย</span>':''}</b><small>${esc(p.category||'ไม่มีหมวด')} · ${money0(p.price)} · เหลือ ${p.stock}</small></div>
-          <button class="mini" data-mv="${esc(p.id)}" data-d="top" title="ขึ้นบนสุด">⤒</button><button class="mini" data-mv="${esc(p.id)}" data-d="-1">↑</button><button class="mini" data-mv="${esc(p.id)}" data-d="1">↓</button><button class="mini green" data-ep="${esc(p.id)}">แก้</button></div>`).join(''):'<div class="muted" style="padding:10px 0">ไม่พบสินค้า</div>';
+          <button class="mini ${p.qr?'green':''}" data-qrt="${esc(p.id)}" title="แสดงในหน้าสั่ง QR">${p.qr?'✓ QR':'QR'}</button><button class="mini" data-mv="${esc(p.id)}" data-d="top" title="ขึ้นบนสุด">⤒</button><button class="mini" data-mv="${esc(p.id)}" data-d="-1">↑</button><button class="mini" data-mv="${esc(p.id)}" data-d="1">↓</button><button class="mini green" data-ep="${esc(p.id)}">แก้</button></div>`).join(''):'<div class="muted" style="padding:10px 0">ไม่พบสินค้า</div>';
         a.el.querySelector('#apBulk').classList.toggle('hidden',!AP_SEL.size);a.el.querySelector('#apSelN').textContent=`เลือก ${AP_SEL.size} รายการ`};
       a.redraw();a.el.querySelector('#apQ').addEventListener('input',a.redraw);
       a.el.addEventListener('change',e=>{const c=e.target.closest('[data-apsel]');if(!c)return;if(c.checked)AP_SEL.add(c.dataset.apsel);else AP_SEL.delete(c.dataset.apsel);a.redraw()});
@@ -1218,6 +1220,9 @@ function adminProducts(){AP_SEL=new Set();
         if(ct){AP_CAT=ct.dataset.apcat;a.redraw();return}
         if(e.target.closest('[data-apclr]')){AP_SEL.clear();a.redraw();return}
         if(e.target.closest('[data-apmove]')){moveToCat([...AP_SEL]);return}
+        const aq=e.target.closest('[data-apqr]'),qt=e.target.closest('[data-qrt]');
+        if(aq||qt){const ids=aq?[...AP_SEL]:[qt.dataset.qrt],on=aq?aq.dataset.apqr==='1':!(prodById(qt.dataset.qrt)||{}).qr;
+          try{await guard(()=>API.setQR(ids,on),'กำลังบันทึก...');PRODUCTS.forEach(p=>{if(ids.includes(p.id))p.qr=on});cacheSave();if(aq)AP_SEL.clear();a.redraw();toast(on?`แสดงในหน้า QR ${ids.length} รายการ`:`ซ่อนจากหน้า QR ${ids.length} รายการ`,'ok')}catch(err){}return}
         if(ep)editProduct(ep.dataset.ep);
         if(mv){const l=vis(),i=l.findIndex(p=>p.id===mv.dataset.mv);if(i<0)return;let ch=[];
           if(mv.dataset.d==='top'){if(i===0)return;l[i].order=Math.min(...l.map(p=>p.order||0))-1;ch=[l[i]]}
@@ -1245,9 +1250,10 @@ async function editProduct(id,preCat=''){
         <input type="file" id="fp-file" accept="image/*" hidden></div></div>
       ${f('image','หรือวางลิงก์รูป (URL / Google Drive)',p.image,'text','full')}
       ${f('nameEn','ชื่อภาษาอังกฤษ (หน้าสั่ง QR)',p.nameEn,'text','full')}
-      <div class="field full"><label class="switch" style="padding:0"><div><b>ติดป้าย "แนะนำ"</b><small>ขึ้นหมวดเมนูแนะนำในหน้าสั่ง QR</small></div><span class="tg"><input type="checkbox" id="fp-featured" ${p.featured?'checked':''}><span></span></span></label></div></div>${id?'<button class="btn red block" data-del type="button">ลบสินค้านี้</button>':''}`,
+      <div class="field full"><label class="switch" style="padding:0"><div><b>ติดป้าย "แนะนำ"</b><small>ขึ้นหมวดเมนูแนะนำในหน้าสั่ง QR</small></div><span class="tg"><input type="checkbox" id="fp-featured" ${p.featured?'checked':''}><span></span></span></label></div>
+      <div class="field full"><label class="switch" style="padding:0"><div><b>แสดงในหน้าสั่ง QR</b><small>ลูกค้าเห็นและสั่งได้เฉพาะสินค้าที่เปิดไว้</small></div><span class="tg"><input type="checkbox" id="fp-qr" ${p.qr?'checked':''}><span></span></span></label></div></div>${id?'<button class="btn red block" data-del type="button">ลบสินค้านี้</button>':''}`,
     'บันทึก',el=>{const g=k=>el.querySelector('#fp-'+k).value.trim();
-      const d={id:g('id')||('P'+uid()),name:g('name'),category:g('category'),price:Number(g('price')||0),cost:Number(g('cost')||0),stock:Number(g('stock')||0),low:Number(g('low')||0),active:g('active')==='1',image:driveImg(g('image')),nameEn:g('nameEn'),featured:el.querySelector('#fp-featured').checked,order:p.order||PRODUCTS.length+1};
+      const d={id:g('id')||('P'+uid()),name:g('name'),category:g('category'),price:Number(g('price')||0),cost:Number(g('cost')||0),stock:Number(g('stock')||0),low:Number(g('low')||0),active:g('active')==='1',image:driveImg(g('image')),nameEn:g('nameEn'),featured:el.querySelector('#fp-featured').checked,qr:el.querySelector('#fp-qr').checked,order:p.order||PRODUCTS.length+1};
       if(!d.name)return 'กรุณากรอกชื่อสินค้า';if(PRODUCTS.some(x=>x.id===d.id&&x.id!==id))return 'รหัสสินค้านี้มีอยู่แล้ว';return d},
     (a,finish)=>{const q=k=>a.el.querySelector('#fp-'+k),setPv=u=>{const o=q('pv'),n=document.createElement(u?'img':'span');n.id='fp-pv';n.className='pv'+(u?'':' empty');if(u){n.src=u;n.referrerPolicy='no-referrer'}else n.innerHTML='<i class="fi fi-rr-picture"></i>';o.replaceWith(n)};
       q('pick').onclick=()=>q('file').click();if(q('clear'))q('clear').onclick=()=>{q('image').value='';setPv('')};
